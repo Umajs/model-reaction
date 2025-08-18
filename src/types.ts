@@ -35,6 +35,8 @@ export interface ModelOptions {
     debounceReactions?: number;
     errorFormatter?: (error: ValidationError) => string;
     validationDelay?: number; // 新增：验证延迟时间（毫秒）
+    cacheMaxAge?: number; // 新增：缓存最大存活时间（毫秒）
+    cacheSizeLimit?: number; // 新增：缓存大小限制
 }
 
 export interface ModelReturn {
@@ -52,4 +54,5 @@ export interface ModelReturn {
 export interface CachedReaction {
     computedValue: any;
     dependencies: Record<string, any>;
+    lastUsed: number; // 新增：最后使用时间戳
 }

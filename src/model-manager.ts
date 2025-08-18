@@ -1,5 +1,5 @@
 import type { Model, ModelOptions, Reaction, ValidationError, FieldSchema, CachedReaction } from './types';
-import { validateField } from './utils';
+import { validateField, deepEqual } from './utils';
 
 // 核心模型类 - 封装所有模型相关功能
 export class ModelManager {
@@ -17,13 +17,18 @@ export class ModelManager {
 
     // 缓存机制相关属性
     private reactionCache: Record<string, CachedReaction> = {};
+    private cacheMaxAge: number;
+    private cacheSizeLimit: number;
 
     constructor(schema: Model, options?: ModelOptions) {
         this.schema = schema;
         this.options = options || {};
+        this.cacheMaxAge = this.options.cacheMaxAge || 3600000; // 默认1小时
+        this.cacheSizeLimit = this.options.cacheSizeLimit || 1000; // 默认最多1000个缓存项
         this.initializeDefaults();
         this.collectReactions();
     }
+
 
     // 初始化默认值
     private initializeDefaults(): void {
@@ -107,7 +112,7 @@ export class ModelManager {
         let allValid = true;
         const changedFields: string[] = [];
 
-        // 先更新所有字段值
+        // 先验证并更新每个字段
         Object.entries(fields).forEach(([field, value]) => {
             const schema = this.schema[field];
             if (!schema) {
@@ -116,15 +121,27 @@ export class ModelManager {
                 return;
             }
 
+            // 清除之前的错误
+            this.validationErrors[field] = [];
+
+            // 应用转换
             let transformedValue = value;
             if (schema.transform) {
                 transformedValue = schema.transform(value);
             }
 
+            // 验证字段
+            const isValid = validateField(schema, transformedValue, this.validationErrors, field);
+            
+            if (!isValid) {
+                allValid = false;
+                return;
+            }
+
             // 标记字段为脏
             this.dirtyFields.add(field);
 
-            // 注意：这里无论验证结果如何都会更新值
+            // 只有验证通过且值发生变化才更新
             if (this.data[field] !== transformedValue) {
                 this.data[field] = transformedValue;
                 changedFields.push(field);
@@ -238,13 +255,31 @@ export class ModelManager {
             const cached = this.reactionCache[cacheKey] as CachedReaction;
             let useCache = false;
     
+            // 改进的依赖比较算法
             if (cached) {
-                useCache = true;
-                // 检查所有依赖的值是否变化
-                for (const depField of reaction.fields) {
-                    if (cached.dependencies[depField] !== dependentValues[depField]) {
-                        useCache = false;
-                        break;
+                // 快速路径：如果依赖字段数量不同，直接失效缓存
+                if (Object.keys(cached.dependencies).length !== Object.keys(dependentValues).length) {
+                    useCache = false;
+                } else {
+                    useCache = true;
+                    // 使用Map和更高效的比较方式
+                    for (const depField of reaction.fields) {
+                        const cachedValue = cached.dependencies[depField];
+                        const currentValue = dependentValues[depField];
+                        
+                        // 针对复杂对象使用深度比较
+                        if (typeof cachedValue === 'object' && cachedValue !== null && 
+                            typeof currentValue === 'object' && currentValue !== null) {
+                            // 使用导入的deepEqual函数
+                            if (!deepEqual(cachedValue, currentValue)) {
+                                useCache = false;
+                                break;
+                            }
+                        } else if (cachedValue !== currentValue) {
+                            // 基本类型使用严格比较
+                            useCache = false;
+                            break;
+                        }
                     }
                 }
             }
@@ -263,7 +298,8 @@ export class ModelManager {
                     // 更新缓存
                     this.reactionCache[cacheKey] = {
                         computedValue: computedValue,
-                        dependencies: { ...dependentValues }
+                        dependencies: { ...dependentValues },
+                        lastUsed: Date.now()
                     };
     
                     this.setField(field, computedValue);
@@ -315,8 +351,41 @@ export class ModelManager {
         return errors.map(err => `${err.field}: ${err.message}`).join('; ');
     }
 
-    // 清除缓存
+    // 手动触发缓存全部清除方法
     clearCache(): void {
+        // 清空缓存对象
         this.reactionCache = {};
+        // 触发缓存清除事件
+        this.emit('cache:cleared', {});
+    }
+
+    // 供外部调用的定期清理过期缓存方法
+    cleanupCache(): void {
+        const now = Date.now();
+        const cacheEntries = Object.entries(this.reactionCache);
+    
+        // 1. 移除过期缓存
+        for (const [key, cache] of cacheEntries) {
+            if (now - cache.lastUsed > this.cacheMaxAge) {
+                delete this.reactionCache[key];
+            }
+        }
+    
+        // 2. 如果缓存数量超过限制，使用LRU策略清理
+        const currentCacheSize = Object.keys(this.reactionCache).length;
+        if (currentCacheSize > this.cacheSizeLimit) {
+            // 按最后使用时间排序
+            const sortedEntries = cacheEntries.sort((a, b) => a[1].lastUsed - b[1].lastUsed);
+            // 移除最早使用的缓存项
+            const itemsToRemove = currentCacheSize - this.cacheSizeLimit;
+            for (let i = 0; i < itemsToRemove; i++) {
+                if (sortedEntries[i]?.[0]) {
+                    const cacheKey = sortedEntries[i]?.[0];
+                    if (cacheKey) {
+                        delete this.reactionCache[cacheKey];
+                    }
+                }
+            }
+        }
     }
 }
