@@ -1,17 +1,3 @@
-
-
-
-          
-我需要先查看当前 README.md 文件的内容，以便了解已有的信息并进行扩展。
-        
-            
-toolName: view_files
-            
-status: success
-          
-            
-filePath: /Users/bytedance/code/test/model-reaction/README.md
-          
 # model-reaction
 
 一个强大的、类型安全的数据模型管理库，支持数据验证、依赖反应和缓存机制。
