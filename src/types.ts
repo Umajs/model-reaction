@@ -15,7 +15,7 @@ export interface ValidationError {
 export interface Reaction<T = any> {
     fields: string[];
     computed: (values: Record<string, any>) => T;
-    action: (values: { computed: T } & Record<string, any>) => void;
+    action?: (values: { computed: T } & Record<string, any>) => void; // 改为可选字段
 }
 
 export interface FieldSchema {

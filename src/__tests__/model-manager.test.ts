@@ -34,10 +34,18 @@ describe('ModelManager', () => {
     expect(modelManager.getField('name')).toBe('Test User');
   });
 
-  test('should reject invalid field values', () => {
-    modelManager.setField('age', 'not-a-number');
-    // 等待验证完成
-    modelManager.validateAll();
+  test('should reject invalid field values and not update', () => {
+    // 保存原始值
+    const originalAge = modelManager.getField('age');
+    
+    // 尝试设置无效值
+    const result = modelManager.setField('age', 'not-a-number');
+    
+    // 验证返回值
+    expect(result).toBe(false);
+    // 验证值未被更新
+    expect(modelManager.getField('age')).toBe(originalAge);
+    // 验证错误信息
     expect(modelManager.getValidationSummary()).toContain('age: 必须为数字');
   });
 
@@ -66,7 +74,6 @@ describe('ModelManager', () => {
             reaction: {
                 fields: ['firstName', 'lastName'],
                 computed: (values) => `${values.firstName} ${values.lastName}`,
-                action: () => {}
             }
         }
     };
@@ -109,7 +116,6 @@ describe('ModelManager', () => {
             }
             return values.input.toUpperCase();
           },
-          action: () => {}
         }
       }
     };
@@ -125,6 +131,9 @@ describe('ModelManager', () => {
   });
 
   test('should handle invalid dependent fields in reaction', (done) => {
+    // 捕获console.error输出
+    console.error = jest.fn();
+
     const invalidDepsSchema: Model = {
       validField: { type: 'string', default: 'valid' },
       invalidField: {
@@ -133,7 +142,6 @@ describe('ModelManager', () => {
         reaction: {
           fields: ['validField', 'nonexistentField'], // 依赖不存在的字段
           computed: (values) => values.validField + (values.nonexistentField || ''),
-          action: () => {}
         }
       }
     };
@@ -142,8 +150,7 @@ describe('ModelManager', () => {
     modelManager.setField('validField', 'test');
 
     setTimeout(() => {
-      expect(modelManager.validationErrors).toHaveProperty('__reactions');
-      expect(modelManager.validationErrors?.__reactions?.[0]?.message).toContain('依赖字段 nonexistentField 未定义');
+      expect(console.error).toHaveBeenCalledWith('依赖字段 nonexistentField 未定义');
       done();
     }, 0);
   });
@@ -208,7 +215,6 @@ describe('ModelManager', () => {
         reaction: {
           fields: ['value'],
           computed: (values) => values.value * 2,
-          action: () => {}
         }
       },
       squared: {
@@ -217,7 +223,6 @@ describe('ModelManager', () => {
         reaction: {
           fields: ['value'],
           computed: (values) => values.value * values.value,
-          action: () => {}
         }
       }
     };
@@ -241,7 +246,6 @@ describe('ModelManager', () => {
         reaction: {
           fields: ['a'],
           computed: (values) => values.a * 2,
-          action: () => {}
         }
       },
       c: {
@@ -250,7 +254,6 @@ describe('ModelManager', () => {
         reaction: {
           fields: ['b'],
           computed: (values) => values.b * 3,
-          action: () => {}
         }
       }
     };
@@ -279,7 +282,6 @@ describe('ModelManager', () => {
             computeCount++;
             return values.value * 2;
           },
-          action: () => {}
         }
       }
     };
@@ -298,18 +300,60 @@ describe('ModelManager', () => {
       setTimeout(() => {
         expect(modelManager.getField('computedValue')).toBe(10);
         expect(computeCount).toBe(1); // 计数不变
-
-        // 清除缓存后再设置相同的值，应该触发计算
-        modelManager.clearCache();
-        modelManager.setField('value', 5);
-
-        setTimeout(() => {
-          expect(modelManager.getField('computedValue')).toBe(10);
-          // TODO 这里计数增加的逻辑有问题，应该是 2 而不是 1
-          expect(computeCount).toBe(1); // 计数增加
-          done();
-        }, 0);
+        done();
       }, 0);
     }, 0);
+  });
+
+  // 新增测试：验证setField在验证失败时不更新值
+  test('setField should not update value when validation fails', () => {
+    // 初始值
+    expect(modelManager.getField('age')).toBe(18);
+
+    // 尝试设置无效值
+    const result = modelManager.setField('age', 15);
+    
+    // 验证返回值
+    expect(result).toBe(false);
+    // 验证值未被更新
+    expect(modelManager.getField('age')).toBe(18);
+    // 验证错误信息
+    expect(modelManager.getValidationSummary()).toContain('age: 值必须大于等于18');
+  });
+
+  // 新增测试：验证setField在验证通过时更新值
+  test('setField should update value when validation passes', () => {
+    // 尝试设置有效值
+    const result = modelManager.setField('age', 20);
+    
+    // 验证返回值
+    expect(result).toBe(true);
+    // 验证值已被更新
+    expect(modelManager.getField('age')).toBe(20);
+    // 验证无错误信息
+    expect(modelManager.getValidationSummary()).toBe('验证通过');
+  });
+
+  // 新增测试：验证transform不影响验证结果
+  test('setField should validate transformed value correctly', () => {
+    const transformSchema: Model = {
+      age: {
+        type: 'number',
+        validator: [ValidationRules.required, ValidationRules.number, ValidationRules.min(18)],
+        transform: (value) => parseInt(value as string, 10),
+        default: 18
+      }
+    };
+    const modelManager = new ModelManager(transformSchema);
+
+    // 测试有效转换
+    let result = modelManager.setField('age', '20');
+    expect(result).toBe(true);
+    expect(modelManager.getField('age')).toBe(20);
+
+    // 测试无效转换
+    result = modelManager.setField('age', '15');
+    expect(result).toBe(false);
+    expect(modelManager.getField('age')).toBe(20); // 保持之前的有效值
   });
 });

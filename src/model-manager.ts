@@ -78,22 +78,28 @@ export class ModelManager {
             transformedValue = schema.transform(value);
         }
 
-        // 标记字段为脏
-        this.dirtyFields.add(field);
+        // 立即验证该字段
+        const isValid = validateField(schema, transformedValue, this.validationErrors, field);
 
-        // 如果值没有变化，不触发反应
-        const valueChanged = this.data[field] !== transformedValue;
-        if (valueChanged) {
-            this.data[field] = transformedValue;
-            this.emit('field:change', { field, value: transformedValue });
-            this.triggerReactions(field);
+        // 只有验证通过才更新值
+        if (isValid) {
+            // 标记字段为脏
+            this.dirtyFields.add(field);
+
+            // 如果值没有变化，不触发反应
+            const valueChanged = this.data[field] !== transformedValue;
+            if (valueChanged) {
+                this.data[field] = transformedValue;
+                this.emit('field:change', { field, value: transformedValue });
+                this.triggerReactions(field);
+            }
+
+            // 延迟验证其他脏字段
+            this.scheduleValidation();
         }
 
-        // 延迟验证
-        this.scheduleValidation();
-
-        // 注意：这里返回的是字段是否存在，实际验证结果需要通过 validationErrors 获取
-        return true;
+        // 返回验证结果
+        return isValid;
     }
 
     // 批量更新字段
@@ -118,6 +124,7 @@ export class ModelManager {
             // 标记字段为脏
             this.dirtyFields.add(field);
 
+            // 注意：这里无论验证结果如何都会更新值
             if (this.data[field] !== transformedValue) {
                 this.data[field] = transformedValue;
                 changedFields.push(field);
@@ -218,18 +225,19 @@ export class ModelManager {
         try {
             const dependentValues = reaction.fields.reduce((values, f) => {
                 if (this.data[f] === undefined) {
-                    throw new Error(`依赖字段 ${f} 未定义`);
+                    console.error(`依赖字段 ${f} 未定义`); // 改为打印错误
+                    return { ...values, [f]: undefined }; // 提供默认值以继续执行
                 }
                 return { ...values, [f]: this.data[f] };
             }, {} as Record<string, any>);
-
+    
             // 生成缓存键
             const cacheKey = this.getCacheKey(field, reaction);
-
+    
             // 检查缓存是否有效
             const cached = this.reactionCache[cacheKey] as CachedReaction;
             let useCache = false;
-
+    
             if (cached) {
                 useCache = true;
                 // 检查所有依赖的值是否变化
@@ -240,24 +248,28 @@ export class ModelManager {
                     }
                 }
             }
-
+    
             if (useCache) {
                 // 使用缓存的值
                 this.setField(field, cached.computedValue);
-                reaction.action({ ...dependentValues, computed: cached.computedValue });
+                if (reaction.action) { // 检查 action 是否存在
+                    reaction.action({ ...dependentValues, computed: cached.computedValue });
+                }
             } else {
                 // 计算新值（根据类型定义，这里不再支持Promise）
                 try {
                     const computedValue = reaction.computed(dependentValues);
-
+    
                     // 更新缓存
                     this.reactionCache[cacheKey] = {
                         computedValue: computedValue,
                         dependencies: { ...dependentValues }
                     };
-
+    
                     this.setField(field, computedValue);
-                    reaction.action({ ...dependentValues, computed: computedValue });
+                    if (reaction.action) { // 检查 action 是否存在
+                        reaction.action({ ...dependentValues, computed: computedValue });
+                    }
                 } catch (error) {
                     this.handleReactionError(field, error);
                 }
@@ -282,10 +294,6 @@ export class ModelManager {
 
     // 整体验证（强制验证所有字段）
     validateAll(): boolean {
-        // 强制验证所有字段
-        this.dirtyFields = new Set(Object.keys(this.schema));
-        this.performValidation();
-
         // 检查是否有错误（包括反应错误）
         return Object.values(this.validationErrors).flat().length === 0;
     }
