@@ -10,7 +10,7 @@ model-reaction 是一个用于管理应用程序数据模型的 TypeScript 库�
 - 事件系统：支持订阅字段变化和验证完成等事件
 - 类型安全：完全基于 TypeScript 构建，提供良好的类型提示
 ## 安装
-```
+```bash
 # 使用 npm
 npm install model-reaction
 
@@ -18,7 +18,7 @@ npm install model-reaction
 yarn add model-reaction
 ```
 ## 基本使用
-```
+```JS
 import { createModel } from 'model-reaction';
 import { ValidationRules } from 'model-reaction/validators';
 
@@ -66,7 +66,7 @@ console.log('验证摘要:', userModel.getValidationSummary());
 ### ModelManager
 核心类，负责数据管理、验证和反应处理。
  构造函数
-```
+```JS
 new ModelManager(schema: Model, options?: ModelOptions);
 ``` 方法
 - setField(field: string, value: any): boolean - 设置单个字段值
@@ -89,11 +89,11 @@ createModel(schema: Model, options?: ModelOptions): ModelReturn;
 - number - 必须为数字
 - min(value: number) - 最小值验证
 ## 运行测试
-```
+```bash
 npm test
 ```
 ## 构建项目
-```
+```bash
 npm run build
 ```
 构建后的文件将输出到 dist 目录。
