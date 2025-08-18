@@ -76,18 +76,64 @@ new ModelManager(schema: Model, options?: ModelOptions);
 - getValidationSummary(): string - 获取验证摘要
 - on(event: string, callback: (data: any) => void): void - 订阅事件
 - clearCache(): void - 清除缓存
-### 工厂函数
 ```
+### 事件
+```JS
+- fieldChange: 字段值变化时触发
+- validationComplete: 所有字段验证完成时触发
+- validationError: 验证错误时触发
+- reactionComplete: 反应处理完成时触发
+- error: 其他错误时触发
+```
+### 类型定义
+```JS
+interface Model {
+  [field: string]: {
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+    validator?: ValidationRule[];
+    reaction?: Reaction;
+    default?: any;
+  };
+}
+```
+### 反应
+```JS
+interface Reaction {
+  fields: string[];
+  computed?: (values: Record<string, any>) => any;
+  action?: (values: Record<string, any>) => void;
+}
+```
+### 验证规则
+```JS
+interface ValidationRule {
+  name: string;
+  params?: any[];
+}
+```
+### 验证错误
+```JS
+interface ValidationError {
+  field: string;
+  rule: string;
+  params?: any[];
+}
+```
+
+### 工厂函数
+```JS
 createModel(schema: Model, options?: ModelOptions): ModelReturn;
 ```
 创建并返回一个模型实例。
 
 ### 验证规则
 内置的验证规则：
-
+```JS
 - required - 字段必填
 - number - 必须为数字
 - min(value: number) - 最小值验证
+```
+
 ## 运行测试
 ```bash
 npm test
