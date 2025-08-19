@@ -35,6 +35,7 @@ export interface ModelOptions {
     debounceReactions?: number;
     errorFormatter?: (error: ValidationError) => string;
     validationDelay?: number; // 新增：验证延迟时间（毫秒）
+    useCache?: boolean; // 新增：缓存开关选项
     cacheMaxAge?: number; // 新增：缓存最大存活时间（毫秒）
     cacheSizeLimit?: number; // 新增：缓存大小限制
 }

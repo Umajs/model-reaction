@@ -16,19 +16,20 @@ export class ModelManager {
     private isValidationPending: boolean = false;
 
     // 缓存机制相关属性
-    private reactionCache: Record<string, CachedReaction> = {};
+    private useCache: boolean; // 新增：缓存开关状态
     private cacheMaxAge: number;
     private cacheSizeLimit: number;
+    private reactionCache: Record<string, CachedReaction> = {};
 
     constructor(schema: Model, options?: ModelOptions) {
         this.schema = schema;
         this.options = options || {};
         this.cacheMaxAge = this.options.cacheMaxAge || 3600000; // 默认1小时
         this.cacheSizeLimit = this.options.cacheSizeLimit || 1000; // 默认最多1000个缓存项
+        this.useCache = this.options.useCache !== undefined ? this.options.useCache : false; // 默认关闭缓存
         this.initializeDefaults();
         this.collectReactions();
     }
-
 
     // 初始化默认值
     private initializeDefaults(): void {
@@ -132,7 +133,7 @@ export class ModelManager {
 
             // 验证字段
             const isValid = validateField(schema, transformedValue, this.validationErrors, field);
-            
+
             if (!isValid) {
                 allValid = false;
                 return;
@@ -242,68 +243,75 @@ export class ModelManager {
         try {
             const dependentValues = reaction.fields.reduce((values, f) => {
                 if (this.data[f] === undefined) {
-                    console.error(`依赖字段 ${f} 未定义`); // 改为打印错误
-                    return { ...values, [f]: undefined }; // 提供默认值以继续执行
+                    console.error(`依赖字段 ${f} 未定义`);
+                    return { ...values, [f]: undefined };
                 }
                 return { ...values, [f]: this.data[f] };
             }, {} as Record<string, any>);
-    
+
             // 生成缓存键
             const cacheKey = this.getCacheKey(field, reaction);
-    
+
             // 检查缓存是否有效
-            const cached = this.reactionCache[cacheKey] as CachedReaction;
+            let cached: CachedReaction | undefined;
             let useCache = false;
-    
-            // 改进的依赖比较算法
-            if (cached) {
-                // 快速路径：如果依赖字段数量不同，直接失效缓存
-                if (Object.keys(cached.dependencies).length !== Object.keys(dependentValues).length) {
-                    useCache = false;
-                } else {
-                    useCache = true;
-                    // 使用Map和更高效的比较方式
-                    for (const depField of reaction.fields) {
-                        const cachedValue = cached.dependencies[depField];
-                        const currentValue = dependentValues[depField];
-                        
-                        // 针对复杂对象使用深度比较
-                        if (typeof cachedValue === 'object' && cachedValue !== null && 
-                            typeof currentValue === 'object' && currentValue !== null) {
-                            // 使用导入的deepEqual函数
-                            if (!deepEqual(cachedValue, currentValue)) {
+
+            // 只有启用缓存时才检查缓存
+            if (this.useCache) {
+                cached = this.reactionCache[cacheKey];
+
+                // 改进的依赖比较算法
+                if (cached) {
+                    // 快速路径：如果依赖字段数量不同，直接失效缓存
+                    if (Object.keys(cached.dependencies).length !== Object.keys(dependentValues).length) {
+                        useCache = false;
+                    } else {
+                        useCache = true;
+                        // 使用Map和更高效的比较方式
+                        for (const depField of reaction.fields) {
+                            const cachedValue = cached.dependencies[depField];
+                            const currentValue = dependentValues[depField];
+
+                            // 针对复杂对象使用深度比较
+                            if (typeof cachedValue === 'object' && cachedValue !== null &&
+                                typeof currentValue === 'object' && currentValue !== null) {
+                                // 使用导入的deepEqual函数
+                                if (!deepEqual(cachedValue, currentValue)) {
+                                    useCache = false;
+                                    break;
+                                }
+                            } else if (cachedValue !== currentValue) {
+                                // 基本类型使用严格比较
                                 useCache = false;
                                 break;
                             }
-                        } else if (cachedValue !== currentValue) {
-                            // 基本类型使用严格比较
-                            useCache = false;
-                            break;
                         }
                     }
                 }
             }
-    
-            if (useCache) {
+
+            if (this.useCache && useCache && cached) {
                 // 使用缓存的值
                 this.setField(field, cached.computedValue);
-                if (reaction.action) { // 检查 action 是否存在
+                if (reaction.action) {
                     reaction.action({ ...dependentValues, computed: cached.computedValue });
                 }
             } else {
-                // 计算新值（根据类型定义，这里不再支持Promise）
+                // 计算新值
                 try {
                     const computedValue = reaction.computed(dependentValues);
-    
-                    // 更新缓存
-                    this.reactionCache[cacheKey] = {
-                        computedValue: computedValue,
-                        dependencies: { ...dependentValues },
-                        lastUsed: Date.now()
-                    };
-    
+
+                    // 只有启用缓存时才更新缓存
+                    if (this.useCache) {
+                        this.reactionCache[cacheKey] = {
+                            computedValue: computedValue,
+                            dependencies: { ...dependentValues },
+                            lastUsed: Date.now()
+                        };
+                    }
+
                     this.setField(field, computedValue);
-                    if (reaction.action) { // 检查 action 是否存在
+                    if (reaction.action) {
                         reaction.action({ ...dependentValues, computed: computedValue });
                     }
                 } catch (error) {
@@ -353,24 +361,30 @@ export class ModelManager {
 
     // 手动触发缓存全部清除方法
     clearCache(): void {
-        // 清空缓存对象
-        this.reactionCache = {};
-        // 触发缓存清除事件
-        this.emit('cache:cleared', {});
+        // 只有启用缓存时才执行清除
+        if (this.useCache) {
+            // 清空缓存对象
+            this.reactionCache = {};
+            // 触发缓存清除事件
+            this.emit('cache:cleared', {});
+        }
     }
 
     // 供外部调用的定期清理过期缓存方法
     cleanupCache(): void {
+        // 只有启用缓存时才执行清理
+        if (!this.useCache) return;
+
         const now = Date.now();
         const cacheEntries = Object.entries(this.reactionCache);
-    
+
         // 1. 移除过期缓存
         for (const [key, cache] of cacheEntries) {
             if (now - cache.lastUsed > this.cacheMaxAge) {
                 delete this.reactionCache[key];
             }
         }
-    
+
         // 2. 如果缓存数量超过限制，使用LRU策略清理
         const currentCacheSize = Object.keys(this.reactionCache).length;
         if (currentCacheSize > this.cacheSizeLimit) {
