@@ -19,11 +19,12 @@ export interface Reaction<T = any> {
 }
 
 export interface FieldSchema {
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'model'; // 新增'model'类型
     validator?: Validator[];
     reaction?: Reaction | Reaction[];
     default?: any;
     transform?: (value: any) => any; // 同步转换
+    model?: Model; // 当type为'model'时，指定嵌套模型的结构
 }
 
 export interface Model {

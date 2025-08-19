@@ -10,6 +10,7 @@ export class ModelManager {
     private readonly reactions: Array<{ field: string; reaction: Reaction }> = [];
     private readonly reactionTimeouts: Record<string, number> = {};
     private events: Record<string, Array<(data: any) => void>> = {};
+    private nestedModels: Record<string, ModelManager> = {}; // 新增：存储嵌套模型
 
     // 惰性验证相关属性
     private dirtyFields: Set<string> = new Set();
@@ -36,6 +37,10 @@ export class ModelManager {
         Object.entries(this.schema).forEach(([field, schema]) => {
             if (schema.default !== undefined) {
                 this.data[field] = schema.default;
+            } else if (schema.type === 'model' && schema.model) {
+                // 初始化嵌套模型
+                this.nestedModels[field] = new ModelManager(schema.model, this.options);
+                this.data[field] = this.nestedModels[field].data;
             }
         });
     }
@@ -68,11 +73,31 @@ export class ModelManager {
     }
 
     // 设置字段值（使用惰性验证）
-    setField(field: string, value: any): boolean {
+    setField(fieldPath: string, value: any): boolean {
+        // 处理路径访问
+        const [field, ...nestedPath] = fieldPath.split('.');
+        
+        // 新增：确保 field 是有效的字符串
+        if (!field) {
+            console.error('字段路径格式不正确');
+            return false;
+        }
+        
         const schema = this.schema[field];
+    
         if (!schema) {
             console.error(`字段 ${field} 不存在于模型架构中`);
             return false;
+        }
+    
+        // 如果是嵌套路径且当前字段是模型类型
+        if (nestedPath.length > 0) {
+            if (schema.type === 'model' && this.nestedModels[field]) {
+                return this.nestedModels[field].setField(nestedPath.join('.'), value);
+            } else {
+                console.error(`字段 ${field} 不是嵌套模型或未初始化，无法进行路径访问`);
+                return false;
+            }
         }
 
         // 清除之前的错误
@@ -93,7 +118,7 @@ export class ModelManager {
             this.dirtyFields.add(field);
 
             // 如果值没有变化，不触发反应
-            const valueChanged = this.data[field] !== transformedValue;
+            const valueChanged = !deepEqual(this.data[field], transformedValue);
             if (valueChanged) {
                 this.data[field] = transformedValue;
                 this.emit('field:change', { field, value: transformedValue });
@@ -195,7 +220,30 @@ export class ModelManager {
     }
 
     // 获取字段值
-    getField(field: string): any {
+    getField(fieldPath: string): any {
+        // 处理路径访问
+        const [field, ...nestedPath] = fieldPath.split('.');
+        
+        // 新增：确保 field 是有效的字符串
+        if (!field) {
+            console.error('字段路径格式不正确');
+            return undefined;
+        }
+    
+        if (nestedPath.length > 0) {
+            if (this.nestedModels[field]) {
+                return this.nestedModels[field].getField(nestedPath.join('.'));
+            } else if (this.data[field] && typeof this.data[field] === 'object') {
+                // 处理普通对象的路径访问
+                let current = this.data[field];
+                for (const path of nestedPath) {
+                    if (current === undefined || current === null) return undefined;
+                    current = current[path];
+                }
+                return current;
+            }
+            return undefined;
+        }
         return this.data[field];
     }
 
