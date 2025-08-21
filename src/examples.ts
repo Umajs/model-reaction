@@ -23,13 +23,13 @@ const userModel = createModel({
         default: ''
     }
 }, {
-    debounceReactions: 1,
+    debounceReactions: 0,
 });
 
 // 同步使用示例
-export function runExample() {
-    userModel.setField('name', 'John');
-    userModel.setField('age', 30);
+export async function runExample() {
+    await userModel.setField('name', 'John');
+    await userModel.setField('age', 30);
 
     console.log('数据信息:', userModel.data);
     console.log('姓名:', userModel.getField('name'));
@@ -38,7 +38,7 @@ export function runExample() {
 
     console.log('\n-------分割线-------\n');
 
-    const invalidAgeValid = userModel.setField('age', 'invalid');
+    const invalidAgeValid = await userModel.setField('age', 'invalid');
     console.log('年龄设置是否有效:', invalidAgeValid);
     console.log('错误信息:', JSON.stringify(userModel.validationErrors));
     console.log('验证摘要:', userModel.getValidationSummary());
@@ -47,7 +47,7 @@ export function runExample() {
 
     setTimeout(() => {
         console.log('数据信息:', userModel.data);
-    }, 10)
+    }, 0)
 }
 
 runExample();

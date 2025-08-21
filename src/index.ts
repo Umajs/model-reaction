@@ -19,6 +19,7 @@ export function createModel(schema: Model, options: ModelOptions = {}): ModelRet
         validateAll: () => modelManager.validateAll(),
         getValidationSummary: () => modelManager.getValidationSummary(),
         on: (event, callback) => modelManager.on(event, callback),
-        clearCache: () => modelManager.clearCache(),
+        getDirtyData: () => modelManager.getDirtyData(),
+        clearDirtyData: () => modelManager.clearDirtyData(),
     };
 }

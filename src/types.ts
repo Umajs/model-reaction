@@ -1,59 +1,50 @@
-// 类型定义区域 - 集中管理所有接口和类型
+import type { Rule } from './validators';
+
 export interface Validator {
     type: string;
     message: string;
-    validate?: (value: any) => boolean; // 同步验证
+    validate: (value: any, data?: Record<string, any>) => boolean | Promise<boolean>;
 }
 
 export interface ValidationError {
     field: string;
-    rule: string;
     message: string;
-    value?: any;
+    rule?: string;
 }
 
-export interface Reaction<T = any> {
+export interface Reaction {
     fields: string[];
-    computed: (values: Record<string, any>) => T;
-    action?: (values: { computed: T } & Record<string, any>) => void; // 改为可选字段
+    computed: (values: Record<string, any>) => any;
+    action?: (data: Record<string, any>) => void;
 }
 
 export interface FieldSchema {
     type: 'string' | 'number' | 'boolean' | 'object' | 'array';
-    validator?: Validator[];
-    reaction?: Reaction | Reaction[];
+    validator?: (Rule | Validator)[];
     default?: any;
-    transform?: (value: any) => any; // 同步转换
+    reaction?: Reaction | Reaction[];
+    transform?: (value: any) => any;
 }
 
 export interface Model {
     [key: string]: FieldSchema;
 }
 
-// 更新类型定义以支持新的配置选项
 export interface ModelOptions {
+    asyncValidationTimeout?: number;
     debounceReactions?: number;
     errorFormatter?: (error: ValidationError) => string;
-    validationDelay?: number; // 新增：验证延迟时间（毫秒）
-    useCache?: boolean; // 新增：缓存开关选项
-    cacheMaxAge?: number; // 新增：缓存最大存活时间（毫秒）
-    cacheSizeLimit?: number; // 新增：缓存大小限制
 }
 
 export interface ModelReturn {
-    data: Readonly<Record<string, any>>; // 只读数据访问
-    setField: (field: string, value: any) => boolean; // 同步设置字段
+    data: Record<string, any>;
+    validationErrors: Record<string, ValidationError[]>;
+    setField: (field: string, value: any) => Promise<boolean>;
     getField: (field: string) => any;
-    setFields: (fields: Record<string, any>) => boolean; // 批量设置字段
-    validationErrors: Readonly<Record<string, ValidationError[]>>; // 只读错误信息
-    validateAll: () => boolean; // 同步整体验证
+    setFields: (fields: Record<string, any>) => Promise<boolean>;
+    validateAll: () => Promise<boolean>;
     getValidationSummary: () => string;
-    on: (event: string, callback: (data: any) => void) => void; // 事件订阅
-    clearCache: () => void; // 清除缓存
-}
-
-export interface CachedReaction {
-    computedValue: any;
-    dependencies: Record<string, any>;
-    lastUsed: number; // 新增：最后使用时间戳
+    on: (event: string, callback: (...args: any[]) => void) => void;
+    getDirtyData: () => Record<string, any>;
+    clearDirtyData: () => void;
 }
