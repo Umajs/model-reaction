@@ -4,8 +4,18 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
+    "test:basic": "jest src/__tests__/basic-operations.test.ts",
+    "test:validation": "jest src/__tests__/validation.test.ts",
+    "test:reaction": "jest src/__tests__/reaction-system.test.ts",
+    "test:batch": "jest src/__tests__/batch-operations.test.ts",
+    "test:boundary": "jest src/__tests__/boundary-cases.test.ts",
+    "test:dirty": "jest src/__tests__/dirty-data.test.ts",
     "build": "tsc",
-    "format": "prettier --write src/**/*.ts"
+    "format": "prettier --write src/**/*.ts",
+    "example:basic": "ts-node examples/basic-usage.ts",
+    "example:reaction": "ts-node examples/reaction-system.ts",
+    "example:async": "ts-node examples/async-validation.ts",
+    "example:event": "ts-node examples/event-listening.ts"
   },
   "keywords": [],
   "author": "",
