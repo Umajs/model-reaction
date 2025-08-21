@@ -90,81 +90,59 @@ export class ModelManager {
         }
 
         // 立即验证该字段
-        const isValid = await validateField(schema, transformedValue, this.validationErrors, field, this.asyncValidationTimeout);
+        const isValid = await this.validateSingleField(schema, transformedValue, field);
 
-        // 验证通过更新值，否则保存到dirtyData
+        // 处理验证结果
         if (isValid) {
-            // 如果值没有变化，不触发反应
-            const valueChanged = !deepEqual(this.data[field], transformedValue);
-            if (valueChanged) {
-                this.data[field] = transformedValue;
-                // 从dirtyData中移除（如果存在）
-                if (this.dirtyData[field] !== undefined) {
-                    delete this.dirtyData[field];
-                }
-                this.emit('field:change', { field, value: transformedValue });
-                this.triggerReactions(field);
-            }
+            this.handleValidField(field, transformedValue);
         } else {
-            // 验证失败，保存到dirtyData
-            this.dirtyData[field] = transformedValue;
+            this.handleInvalidField(field, transformedValue);
         }
 
         // 返回验证结果
         return isValid;
     }
 
+    // 验证单个字段
+    private async validateSingleField(schema: FieldSchema, value: any, field: string): Promise<boolean> {
+        return validateField(schema, value, this.validationErrors, field, this.asyncValidationTimeout);
+    }
+
+    // 处理有效字段值
+    private handleValidField(field: string, value: any): void {
+        // 如果值没有变化，不触发反应
+        const valueChanged = !deepEqual(this.data[field], value);
+        if (valueChanged) {
+            this.data[field] = value;
+            // 从dirtyData中移除（如果存在）
+            if (this.dirtyData[field] !== undefined) {
+                delete this.dirtyData[field];
+            }
+            this.emit('field:change', { field, value });
+            this.triggerReactions(field);
+        }
+    }
+
+    // 处理无效字段值
+    private handleInvalidField(field: string, value: any): void {
+        // 验证失败，保存到dirtyData
+        this.dirtyData[field] = value;
+    }
+
     // 更新：批量更新字段（异步）
     async setFields(fields: Record<string, any>): Promise<boolean> {
         let allValid = true;
-        const changedFields: string[] = [];
-
+        
         // 先验证并更新每个字段
         const validationPromises = Object.entries(fields).map(async ([field, value]) => {
-            const schema = this.schema[field];
-            if (!schema) {
-                const error = this.errorHandler.createFieldNotFoundError(field);
-                this.errorHandler.triggerError(error);
-                allValid = false;
-                return;
-            }
-
-            // 清除之前的错误
-            this.validationErrors[field] = [];
-
-            // 应用转换
-            let transformedValue = value;
-            if (schema.transform) {
-                transformedValue = schema.transform(value);
-            }
-
-            // 验证字段
-            const isValid = await validateField(schema, transformedValue, this.validationErrors, field, this.asyncValidationTimeout);
-
+            const isValid = await this.setField(field, value);
             if (!isValid) {
                 allValid = false;
-                // 验证失败，保存到dirtyData
-                this.dirtyData[field] = transformedValue;
-                return;
-            }
-
-            // 只有验证通过且值发生变化才更新
-            const valueChanged = !deepEqual(this.data[field], transformedValue);
-            if (valueChanged) {
-                this.data[field] = transformedValue;
-                // 从dirtyData中移除（如果存在）
-                if (this.dirtyData[field] !== undefined) {
-                    delete this.dirtyData[field];
-                }
-                changedFields.push(field);
             }
         });
 
         // 等待所有验证完成
         await Promise.all(validationPromises);
-
-        // 触发所有变更字段的反应
-        changedFields.forEach(field => this.triggerReactions(field));
 
         return allValid;
     }
@@ -187,32 +165,43 @@ export class ModelManager {
     // 触发相关反应
     private triggerReactions(changedField: string): void {
         const debounceTime = this.options.debounceReactions || 0;
-        const affectedReactions = new Set<string>();
+        const affectedReactions = this.collectAffectedReactions(changedField);
+        
+        // 触发反应，确保每个字段只触发一次
+        affectedReactions.forEach(field => {
+            const reaction = this.reactions.find(r => r.field === field)?.reaction;
+            if (reaction) {
+                this.scheduleReaction(field, reaction, debounceTime);
+            }
+        });
+    }
 
-        // 收集所有受影响的反应字段
+    // 收集受影响的反应
+    private collectAffectedReactions(changedField: string): Set<string> {
+        const affectedReactions = new Set<string>();
+        
         this.reactions.forEach(({ field, reaction }) => {
             if (reaction.fields.includes(changedField)) {
                 affectedReactions.add(field);
             }
         });
+        
+        return affectedReactions;
+    }
 
-        // 触发反应，确保每个字段只触发一次
-        affectedReactions.forEach(field => {
-            const reaction = this.reactions.find(r => r.field === field)?.reaction;
-            if (reaction) {
-                if (this.reactionTimeouts[field]) {
-                    clearTimeout(this.reactionTimeouts[field]);
-                }
+    // 安排反应执行（考虑防抖）
+    private scheduleReaction(field: string, reaction: Reaction, debounceTime: number): void {
+        if (this.reactionTimeouts[field]) {
+            clearTimeout(this.reactionTimeouts[field]);
+        }
 
-                if (debounceTime > 0) {
-                    this.reactionTimeouts[field] = setTimeout(() => {
-                        this.processReaction(field, reaction);
-                    }, debounceTime);
-                } else {
-                    this.processReaction(field, reaction);
-                }
-            }
-        });
+        if (debounceTime > 0) {
+            this.reactionTimeouts[field] = setTimeout(() => {
+                this.processReaction(field, reaction);
+            }, debounceTime);
+        } else {
+            this.processReaction(field, reaction);
+        }
     }
 
     // 处理单个反应
@@ -262,27 +251,10 @@ export class ModelManager {
 
         // 验证所有字段
         const validationPromises = Object.keys(this.schema).map(async (field) => {
-          const schema = this.schema[field] as FieldSchema;
-          // 优先使用 dirtyData 中的值，如果没有则使用 data 中的值
-          const value = this.dirtyData[field] !== undefined ? this.dirtyData[field] : this.data[field];
-          this.validationErrors[field] = [];
-          const isValid = await validateField(schema, value, this.validationErrors, field, this.asyncValidationTimeout);
-          if (!isValid) {
-            allValid = false;
-            // 验证失败，确保值在 dirtyData 中
-            this.dirtyData[field] = value;
-          } else {
-            // 验证通过，从 dirtyData 中移除
-            if (this.dirtyData[field] !== undefined) {
-              delete this.dirtyData[field];
+            const isValid = await this.validateAndUpdateField(field);
+            if (!isValid) {
+                allValid = false;
             }
-            // 更新 data 中的值
-            if (!deepEqual(this.data[field], value)) {
-              this.data[field] = value;
-              this.emit('field:change', { field, value });
-              this.triggerReactions(field);
-            }
-          }
         });
 
         await Promise.all(validationPromises);
@@ -292,6 +264,33 @@ export class ModelManager {
 
         // 检查是否有错误
         return allValid;
+    }
+
+    // 验证并更新单个字段
+    private async validateAndUpdateField(field: string): Promise<boolean> {
+        const schema = this.schema[field] as FieldSchema;
+        // 优先使用 dirtyData 中的值，如果没有则使用 data 中的值
+        const value = this.dirtyData[field] !== undefined ? this.dirtyData[field] : this.data[field];
+        this.validationErrors[field] = [];
+        const isValid = await validateField(schema, value, this.validationErrors, field, this.asyncValidationTimeout);
+        
+        if (!isValid) {
+            // 验证失败，确保值在 dirtyData 中
+            this.dirtyData[field] = value;
+        } else {
+            // 验证通过，从 dirtyData 中移除
+            if (this.dirtyData[field] !== undefined) {
+                delete this.dirtyData[field];
+            }
+            // 更新 data 中的值
+            if (!deepEqual(this.data[field], value)) {
+                this.data[field] = value;
+                this.emit('field:change', { field, value });
+                this.triggerReactions(field);
+            }
+        }
+        
+        return isValid;
     }
 
     // 获取验证摘要
