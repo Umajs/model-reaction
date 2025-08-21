@@ -1,5 +1,7 @@
 import type { Model, ModelOptions, Reaction, ValidationError, FieldSchema } from './types';
 import { validateField, deepEqual } from './utils';
+import { ErrorHandler, ErrorType } from './error-handler';
+import { EventEmitter } from './event-emitter';
 
 // 核心模型类 - 封装所有模型相关功能
 export class ModelManager {
@@ -10,13 +12,30 @@ export class ModelManager {
     private readonly options: ModelOptions;
     private readonly reactions: Array<{ field: string; reaction: Reaction }> = [];
     private readonly reactionTimeouts: Record<string, number> = {};
-    private events: Record<string, Array<(data: any) => void>> = {};
+    private readonly eventEmitter: EventEmitter;
+    private readonly errorHandler: ErrorHandler;
     private asyncValidationTimeout: number;
 
     constructor(schema: Model, options?: ModelOptions) {
         this.schema = schema;
         this.options = options || {};
         this.asyncValidationTimeout = this.options.asyncValidationTimeout || 5000; // 默认超时时间5秒
+        this.errorHandler = new ErrorHandler();
+        this.eventEmitter = new EventEmitter();
+
+        // 默认错误监听
+        this.errorHandler.onError(ErrorType.VALIDATION, (error) => {
+            this.emit('validation:error', error);
+        });
+    
+        this.errorHandler.onError(ErrorType.REACTION, (error) => {
+            this.emit('reaction:error', error);
+        });
+    
+        // 添加字段未找到错误的事件转发
+        this.errorHandler.onError(ErrorType.FIELD_NOT_FOUND, (error) => {
+            this.emit('field:not-found', error);
+        });
         this.initializeDefaults();
         this.collectReactions();
     }
@@ -44,24 +63,20 @@ export class ModelManager {
 
     // 订阅事件
     on(event: string, callback: (data: any) => void): void {
-        if (!this.events[event]) {
-            this.events[event] = [];
-        }
-        this.events[event].push(callback);
+        this.eventEmitter.on(event, callback);
     }
 
     // 触发事件
     private emit(event: string, data: any): void {
-        if (this.events[event]) {
-            this.events[event].forEach(callback => callback(data));
-        }
+        this.eventEmitter.emit(event, data);
     }
 
     // 更新：设置字段值（异步）
     async setField(field: string, value: any): Promise<boolean> {
         const schema = this.schema[field];
         if (!schema) {
-            console.error(`字段 ${field} 不存在于模型架构中`);
+            const error = this.errorHandler.createFieldNotFoundError(field);
+            this.errorHandler.triggerError(error);
             return false;
         }
 
@@ -108,7 +123,8 @@ export class ModelManager {
         const validationPromises = Object.entries(fields).map(async ([field, value]) => {
             const schema = this.schema[field];
             if (!schema) {
-                console.error(`字段 ${field} 不存在于模型架构中`);
+                const error = this.errorHandler.createFieldNotFoundError(field);
+                this.errorHandler.triggerError(error);
                 allValid = false;
                 return;
             }
@@ -204,7 +220,8 @@ export class ModelManager {
         try {
             const dependentValues = reaction.fields.reduce((values, f) => {
                 if (this.data[f] === undefined) {
-                    console.error(`依赖字段 ${f} 未定义`);
+                    const error = this.errorHandler.createDependencyError(field, f);
+                    this.errorHandler.triggerError(error);
                     return { ...values, [f]: undefined };
                 }
                 return { ...values, [f]: this.data[f] };
@@ -218,30 +235,31 @@ export class ModelManager {
                     reaction.action({ ...dependentValues, computed: computedValue });
                 }
             } catch (error) {
-                this.handleReactionError(field, error);
+                this.handleReactionError(field, error as Error);
             }
         } catch (error) {
-            this.handleReactionError(field, error);
+            this.handleReactionError(field, error as Error);
         }
     }
 
-    private handleReactionError(field: string, error: unknown): void {
-        console.error(`反应处理失败 [${field}]:`, error);
+    private handleReactionError(field: string, error: Error): void {
+        const appError = this.errorHandler.createReactionError(field, error);
+        this.errorHandler.triggerError(appError);
+
         if (!this.validationErrors['__reactions']) {
             this.validationErrors['__reactions'] = [];
         }
         this.validationErrors['__reactions'].push({
             field,
             rule: 'reaction_error',
-            message: `反应处理失败: ${error instanceof Error ? error.message : String(error)}`
+            message: appError.message
         });
-        this.emit('reaction:error', { field, error });
     }
 
     // 更新：整体验证（异步）
     async validateAll(): Promise<boolean> {
         let allValid = true;
-    
+
         // 验证所有字段
         const validationPromises = Object.keys(this.schema).map(async (field) => {
           const schema = this.schema[field] as FieldSchema;
@@ -266,12 +284,12 @@ export class ModelManager {
             }
           }
         });
-    
+
         await Promise.all(validationPromises);
-    
+
         // 触发验证完成事件
         this.emit('validation:complete', { isValid: allValid });
-    
+
         // 检查是否有错误
         return allValid;
     }
@@ -286,5 +304,10 @@ export class ModelManager {
         }
 
         return errors.map(err => `${err.field}: ${err.message}`).join('; ');
+    }
+
+    // 获取错误处理器 - 允许外部订阅错误
+    getErrorHandler(): ErrorHandler {
+        return this.errorHandler;
     }
 }

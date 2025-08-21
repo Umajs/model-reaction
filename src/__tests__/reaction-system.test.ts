@@ -48,7 +48,7 @@ describe('ModelManager - Reaction System', () => {
     await new Promise(resolve => setTimeout(resolve, 10));
 
     expect(modelManager.validationErrors).toHaveProperty('__reactions');
-    expect(modelManager.validationErrors?.__reactions?.[0]?.message).toContain('反应处理失败: 计算错误');
+    expect(modelManager.validationErrors?.__reactions?.[0]?.message).toContain('计算错误');
   });
 
   // 无效依赖字段测试
@@ -73,6 +73,6 @@ describe('ModelManager - Reaction System', () => {
     // 等待反应执行
     await new Promise(resolve => setTimeout(resolve, 10));
 
-    expect(console.error).toHaveBeenCalledWith('依赖字段 nonexistentField 未定义');
+    expect(console.error).toHaveBeenCalledWith('[dependency_error] 字段 invalidField: 依赖字段 nonexistentField 未定义');
   });
 });

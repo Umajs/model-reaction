@@ -1,4 +1,8 @@
 import type { FieldSchema, ValidationError } from './types';
+import { ErrorHandler, ErrorType } from './error-handler';
+
+// 创建错误处理器实例
+const errorHandler = new ErrorHandler();
 
 // 统一验证函数 - 同时支持同步和异步验证
 export async function validateField(
@@ -26,7 +30,7 @@ export async function validateField(
             validationPromise = Promise.resolve(true);
         }
 
-        // 添加超时处理 - 浏览器环境中timeoutId为number类型
+        // 添加超时处理
         let timeoutId: number;
         const timeoutPromise = new Promise<boolean>((_, reject) => {
             timeoutId = setTimeout(() => reject(new Error(`验证超时: ${field}`)), timeout) as unknown as number;
@@ -43,19 +47,25 @@ export async function validateField(
                         message: validator.message
                     });
                     isValid = false;
+                    // 触发验证错误
+                    const error = errorHandler.createValidationError(field, validator.message);
+                    errorHandler.triggerError(error);
                 }
                 return result;
             })
             .catch(error => {
                 clearTimeout(timeoutId); // 验证失败后清除定时器
-                console.error(`验证失败 [${field}]:`, error);
                 errors[field] = errors[field] || [];
+                const errorMessage = error instanceof Error ? error.message : String(error);
                 errors[field].push({
                     field,
                     rule: 'validation_error',
-                    message: `验证失败: ${error.message}`
+                    message: `验证失败: ${errorMessage}`
                 });
                 isValid = false;
+                // 触发验证错误
+                const appError = errorHandler.createValidationError(field, `验证失败: ${errorMessage}`);
+                errorHandler.triggerError(appError);
                 return false;
             });
     });

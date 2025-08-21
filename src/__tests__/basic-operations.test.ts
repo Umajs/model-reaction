@@ -1,3 +1,4 @@
+import { ErrorType } from '../error-handler';
 import { ModelManager, Model, ValidationRules } from '../index';
 import { Rule } from '../validators';
 
@@ -36,15 +37,18 @@ describe('ModelManager - Basic Operations', () => {
 
   // 不存在字段测试
   test('should handle non-existent field modification', async () => {
-    // 捕获console.error输出
-    console.error = jest.fn();
-    
+    const errorCallback = jest.fn();
+    modelManager.on('field:not-found', errorCallback);
+
     const result = await modelManager.setField('nonexistentField', 'value');
-    
+
     // 验证返回值
     expect(result).toBe(false);
-    // 验证错误日志
-    expect(console.error).toHaveBeenCalledWith('字段 nonexistentField 不存在于模型架构中');
+    // 验证错误回调被调用
+    expect(errorCallback).toHaveBeenCalled();
+    // 验证错误类型和字段
+    expect(errorCallback.mock.calls[0][0].type).toBe(ErrorType.FIELD_NOT_FOUND);
+    expect(errorCallback.mock.calls[0][0].field).toBe('nonexistentField');
     // 验证数据未被修改
     expect(modelManager.getField('nonexistentField')).toBeUndefined();
   });

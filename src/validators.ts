@@ -13,6 +13,11 @@ export class Rule {
         this.message = message;
         this.validate = validate;
     }
+
+    // 允许自定义错误消息
+    withMessage(message: string): Rule {
+        return new Rule(this.type, message, this.validate);
+    }
 }
 
 // 内置验证规则 - 可复用的验证逻辑
@@ -26,18 +31,15 @@ export const ValidationRules = {
     min: (min: number) => new Rule('min', `值必须大于等于${min}`,
         (v) => v >= min
     ),
-    email: new Rule('email', '无效的邮箱格式', // 添加email验证规则
+    email: new Rule('email', '无效的邮箱格式',
         (v) => typeof v === 'string' && /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v)
     ),
-    // 新增：异步验证示例 - 模拟服务器验证
     asyncUnique: (fieldName: string) => new Rule(
         'asyncUnique',
         `${fieldName} 已存在`,
         async (v) => {
-            // 模拟API调用
             return new Promise((resolve) => {
                 setTimeout(() => {
-                    // 模拟验证逻辑，这里简单地假设非空值都是唯一的
                     resolve(!!v);
                 }, 500);
             });
