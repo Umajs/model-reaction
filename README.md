@@ -1,15 +1,16 @@
 # model-reaction
 
-一个强大的、类型安全的数据模型管理库，支持同步和异步数据验证、依赖反应和脏数据管理。
+一个强大的、类型安全的数据模型管理库，支持同步和异步数据验证、依赖反应、脏数据管理和统一错误处理。
 
 ## 项目简介
 
 `model-reaction` 是一个用于管理应用程序数据模型的 TypeScript 库，提供以下核心功能：
 
-- **数据验证**：支持同步和异步验证规则，确保数据符合预期格式
+- **数据验证**：支持同步和异步验证规则，支持自定义验证消息
 - **依赖反应**：当指定字段变化时，自动触发相关计算和操作
 - **脏数据管理**：跟踪验证失败的数据，并提供清除功能
-- **事件系统**：支持订阅字段变化和验证完成等事件
+- **事件系统**：支持订阅字段变化、验证完成和错误事件
+- **错误处理**：统一的错误处理机制，支持错误类型分类和自定义错误监听
 - **类型安全**：完全基于 TypeScript 构建，提供良好的类型提示
 
 ## 安装
@@ -27,19 +28,26 @@ yarn add model-reaction
 ### 同步验证示例
 
 ```typescript
-import { createModel } from 'model-reaction';
-import { ValidationRules } from 'model-reaction/validators';
+import { ModelManager, Model, ValidationRules } from 'model-reaction';
+import { ErrorType } from 'model-reaction/error-handler';
 
 // 定义模型架构
-const userModel = createModel({
+const userModel = new ModelManager({
   name: {
     type: 'string',
-    validator: [ValidationRules.required],
+    validator: [
+      ValidationRules.required.withMessage('姓名不能为空'),
+      ValidationRules.minLength(2).withMessage('姓名长度不能少于2个字符')
+    ],
     default: '',
   },
   age: {
     type: 'number',
-    validator: [ValidationRules.required, ValidationRules.number, ValidationRules.min(18)],
+    validator: [
+      ValidationRules.required.withMessage('年龄不能为空'),
+      ValidationRules.number.withMessage('年龄必须是数字'),
+      ValidationRules.min(18).withMessage('年龄必须大于等于18岁')
+    ],
     default: 18
   },
   info: {
@@ -56,9 +64,21 @@ const userModel = createModel({
   asyncValidationTimeout: 5000
 });
 
+// 订阅错误事件
+userModel.on('validation:error', (error) => {
+  console.error(`验证错误: ${error.field} - ${error.message}`);
+});
+
+userModel.on('field:not-found', (error) => {
+  console.error(`字段不存在: ${error.field}`);
+});
+
 // 设置字段值
 await userModel.setField('name', 'John');
 await userModel.setField('age', 30);
+
+// 尝试设置不存在的字段
+await userModel.setField('nonexistentField', 'value');
 
 // 获取字段值
 console.log('姓名:', userModel.getField('name')); // 输出: John
@@ -82,24 +102,21 @@ console.log('清除后脏数据:', userModel.getDirtyData());
 ### 异步验证示例
 
 ```typescript
-import { createModel } from 'model-reaction';
-import { ValidationRules } from 'model-reaction/validators';
+import { ModelManager, Model, ValidationRules } from 'model-reaction';
 
 // 定义模型架构
-const asyncUserModel = createModel({
+const asyncUserModel = new ModelManager({
   name: {
     type: 'string',
-    validator: [ValidationRules.required],
+    validator: [ValidationRules.required.withMessage('用户名不能为空')],
     default: '',
   },
   username: {
     type: 'string',
     validator: [
-      ValidationRules.required,
-      {
-        type: 'asyncUnique',
-        message: '用户名已存在',
-        validate: async (value: string): Promise<boolean> => {
+      ValidationRules.required.withMessage('账号不能为空'),
+      ValidationRules.asyncUnique(
+        async (value: string): Promise<boolean> => {
           // 模拟异步检查用户名是否已存在
           return new Promise<boolean>((resolve) => {
             setTimeout(() => {
@@ -108,7 +125,7 @@ const asyncUserModel = createModel({
             }, 100);
           });
         }
-      }
+      ).withMessage('用户名已存在')
     ],
     default: ''
   }
@@ -147,12 +164,17 @@ new ModelManager(schema: Model, options?: ModelOptions);
 - `getDirtyData(): Record<string, any>`: 获取验证失败的脏数据
 - `clearDirtyData(): void`: 清除所有脏数据
 - `on(event: string, callback: (data: any) => void): void`: 订阅事件
+- `off(event: string, callback?: (data: any) => void): void`: 取消订阅事件
+- `emit(event: string, data: any): void`: 触发事件
 
 #### 事件
 
 - `field:change`: 字段值变化时触发
 - `validation:complete`: 验证完成时触发
+- `validation:error`: 验证错误时触发
 - `reaction:error`: 反应处理错误时触发
+- `field:not-found`: 尝试访问不存在的字段时触发
+- `error`: 任何错误发生时都会触发的通用错误事件
 
 ### ModelOptions
 
@@ -162,42 +184,104 @@ new ModelManager(schema: Model, options?: ModelOptions);
 - `asyncValidationTimeout?: number`: 异步验证的超时时间（毫秒）
 - `errorFormatter?: (error: ValidationError) => string`: 自定义错误格式化函数
 
+### ErrorHandler
+
+错误处理器提供统一的错误管理：
+
+- `onError(type: ErrorType, callback: (error: AppError) => void): void`: 订阅特定类型的错误
+- `offError(type: ErrorType, callback?: (error: AppError) => void): void`: 取消订阅特定类型的错误
+- `triggerError(error: AppError): void`: 触发错误
+- `createValidationError(field: string, message: string): AppError`: 创建验证错误
+- `createFieldNotFoundError(field: string): AppError`: 创建字段不存在错误
+- ... 其他错误创建方法
+
+### ErrorType 枚举
+
+- `VALIDATION`: 验证错误
+- `FIELD_NOT_FOUND`: 字段不存在错误
+- `REACTION_ERROR`: 反应处理错误
+- `ASYNC_VALIDATION_TIMEOUT`: 异步验证超时错误
+- `UNKNOWN`: 未知错误
+
 ### 类型定义
 
 详细类型定义请参考 `src/types.ts` 文件。
 
 ## 高级用法
 
-### 自定义验证规则
+### 自定义验证规则和消息
 
-您可以创建自定义验证规则：
+您可以创建自定义验证规则并设置自定义错误消息：
 
 ```typescript
+import { ModelManager, Model } from 'model-reaction';
 import { Rule } from 'model-reaction/validators';
 
+// 创建自定义验证规则
 const customRule = new Rule(
   'custom',
-  '不符合自定义规则',
+  '不符合自定义规则', // 默认错误消息
   (value: any) => {
     // 自定义验证逻辑
     return value === 'custom';
   }
 );
 
-// 在模型中使用
-const model = createModel({
+// 在模型中使用，并重写错误消息
+const model = new ModelManager({
   field: {
     type: 'string',
-    validator: [customRule],
+    validator: [
+      customRule.withMessage('字段值必须为"custom"')
+    ],
     default: ''
   }
+});
+```
+
+### 统一错误处理
+
+```typescript
+import { ModelManager, Model, ValidationRules } from 'model-reaction';
+import { ErrorHandler, ErrorType } from 'model-reaction/error-handler';
+
+// 创建错误处理器
+const errorHandler = new ErrorHandler();
+
+// 订阅所有验证错误
+errorHandler.onError(ErrorType.VALIDATION, (error) => {
+  console.error(`验证错误: ${error.field} - ${error.message}`);
+});
+
+// 订阅字段不存在错误
+errorHandler.onError(ErrorType.FIELD_NOT_FOUND, (error) => {
+  console.error(`字段不存在: ${error.field}`);
+});
+
+// 订阅所有错误
+errorHandler.onError(ErrorType.UNKNOWN, (error) => {
+  console.error(`未知错误: ${error.message}`);
+});
+
+// 定义模型架构，传入自定义错误处理器
+const model = new ModelManager({
+  name: {
+    type: 'string',
+    validator: [ValidationRules.required.withMessage('姓名不能为空')],
+    default: ''
+  }
+}, {
+  errorHandler: errorHandler
 });
 ```
 
 ### 异步转换和验证
 
 ```typescript
-const asyncModel = createModel({
+import { ModelManager, Model } from 'model-reaction';
+import { Rule } from 'model-reaction/validators';
+
+const asyncModel = new ModelManager({
   field: {
     type: 'string',
     transform: async (value: string) => {
@@ -205,17 +289,21 @@ const asyncModel = createModel({
       return value.toUpperCase();
     },
     validator: [
-      {
-        type: 'asyncValidator',
-        message: '异步验证失败',
-        validate: async (value: string) => {
+      new Rule(
+        'asyncValidator',
+        '异步验证失败',
+        async (value: string) => {
           // 异步验证逻辑
           return value.length > 3;
         }
-      }
+      ).withMessage('字段长度必须大于3个字符')
     ],
     default: ''
   }
 });
 ```
+
+## 示例
+
+更多示例请查看 `examples/` 目录下的文件。
         
