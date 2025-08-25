@@ -18,7 +18,8 @@
     "example:reaction": "ts-node examples/reaction-system.ts",
     "example:async": "ts-node examples/async-validation.ts",
     "example:event": "ts-node examples/event-listening.ts",
-    "examples": "npm run example:basic && npm run example:reaction && npm run example:async && npm run example:event"
+    "example:complex": "ts-node examples/complex-form.ts",
+    "examples": "npm run example:basic && npm run example:reaction && npm run example:async && npm run example:event && npm run example:complex"
   },
   "keywords": [],
   "author": "",
