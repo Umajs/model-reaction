@@ -41,7 +41,10 @@ export default {
     }),
     typescript({
       tsconfig: './tsconfig.json',
-      declarationDir: 'dist/types'
+      declarationDir: 'dist/types',
+      compilerOptions: {
+        module: 'esnext',
+      }
     }),
     replace({
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
