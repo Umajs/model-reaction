@@ -20,7 +20,7 @@ export class ModelManager {
         this.schema = schema;
         this.options = options || {};
         this.asyncValidationTimeout = this.options.asyncValidationTimeout || 5000; // 默认超时时间5秒
-        this.errorHandler = new ErrorHandler();
+        this.errorHandler = this.options.errorHandler || new ErrorHandler();
         this.eventEmitter = new EventEmitter();
 
         // 默认错误监听
@@ -64,6 +64,11 @@ export class ModelManager {
     // 订阅事件
     on(event: string, callback: (data: any) => void): void {
         this.eventEmitter.on(event, callback);
+    }
+
+    // 取消订阅事件
+    off(event: string, callback?: (data: any) => void): void {
+        this.eventEmitter.off(event, callback);
     }
 
     // 触发事件

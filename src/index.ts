@@ -19,6 +19,7 @@ export function createModel(schema: Model, options: ModelOptions = {}): ModelRet
         validateAll: () => modelManager.validateAll(),
         getValidationSummary: () => modelManager.getValidationSummary(),
         on: (event, callback) => modelManager.on(event, callback),
+        off: (event, callback) => modelManager.off(event, callback),
         getDirtyData: () => modelManager.getDirtyData(),
         clearDirtyData: () => modelManager.clearDirtyData(),
     };
