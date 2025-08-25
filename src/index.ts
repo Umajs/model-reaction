@@ -2,8 +2,9 @@ import type { Model, ModelOptions, ModelReturn } from './types';
 import { ModelManager } from './model-manager';
 
 // 导出常用类型和验证规则
-export { ValidationRules } from './validators';
 export type { Model, ModelOptions, ModelReturn };
+export { ValidationRules, Rule } from './validators';
+export { ErrorType, ErrorHandler } from './error-handler';
 export { ModelManager };
 
 // 工厂函数 - 创建模型实例

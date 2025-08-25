@@ -1,5 +1,4 @@
-import { ModelManager, Model } from '../index';
-import { Rule, ValidationRules } from '../validators';
+import { ModelManager, Model, ValidationRules, Rule } from '../index';
 
 describe('ModelManager - Custom Validation Messages', () => {
   const testSchema: Model = {

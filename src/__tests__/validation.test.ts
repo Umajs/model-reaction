@@ -1,5 +1,4 @@
-import { ModelManager, Model, ValidationRules } from '../index';
-import { Rule } from '../validators';
+import { ModelManager, Model, ValidationRules, Rule } from '../index';
 
 describe('ModelManager - Validation', () => {
   const testSchema: Model = {

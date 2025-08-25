@@ -1,5 +1,4 @@
-import { ModelManager, Model } from '../index';
-import { ErrorHandler, ErrorType } from '../error-handler';
+import { ModelManager, Model, ErrorHandler, ErrorType } from '../index';
 
 describe('ErrorHandler', () => {
   let errorHandler: ErrorHandler;

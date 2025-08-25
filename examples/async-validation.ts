@@ -1,5 +1,4 @@
-import { createModel } from '../src/index';
-import { ValidationRules, Rule } from '../src/validators';
+import { createModel, ValidationRules, Rule } from '../src/index';
 
 // 模拟用户名唯一性检查
 async function checkUsernameUnique(username: string): Promise<boolean> {

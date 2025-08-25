@@ -1,5 +1,4 @@
-import { createModel } from '../src/index';
-import { ValidationRules } from '../src/validators';
+import { createModel, ValidationRules } from '../src/index';
 
 // 定义模型架构
 const userModel = createModel({

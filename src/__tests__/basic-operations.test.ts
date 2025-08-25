@@ -1,6 +1,4 @@
-import { ErrorType } from '../error-handler';
-import { ModelManager, Model, ValidationRules } from '../index';
-import { Rule } from '../validators';
+import { ModelManager, Model, ValidationRules, ErrorType } from '../index';
 
 describe('ModelManager - Basic Operations', () => {
   const testSchema: Model = {
