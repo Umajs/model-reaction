@@ -306,4 +306,7 @@ const asyncModel = new ModelManager({
 ## 示例
 
 更多示例请查看 `examples/` 目录下的文件。
-        
+
+## 最佳实践
+
+请参考 `BEST_PRACTICES.md` 文件中的最佳实践指南。
