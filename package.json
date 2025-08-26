@@ -1,6 +1,6 @@
 {
   "name": "model-reaction",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/types/index.d.ts",
@@ -21,10 +21,24 @@
     "example:complex": "ts-node examples/complex-form.ts",
     "examples": "npm run example:basic && npm run example:reaction && npm run example:async && npm run example:event && npm run example:complex"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "model",
+    "reaction",
+    "validation",
+    "batch",
+    "typescript"
+  ],
+  "author": "Zephyr <zzh627@126.com>",
   "license": "ISC",
-  "description": "",
+  "description": "A TypeScript model library with validation, reaction system, and batch operations",
+  "homepage": "https://github.com/Umajs/model-reaction",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Umajs/model-reaction"
+  },
+  "bugs": {
+    "url": "https://github.com/Umajs/model-reaction/issues"
+  },
   "devDependencies": {
     "@rollup/plugin-alias": "^5.1.1",
     "@rollup/plugin-commonjs": "^28.0.6",
