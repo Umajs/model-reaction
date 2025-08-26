@@ -1,5 +1,7 @@
 src
+examples
 .vscode
 .eslintrc.js
+jest.config.js
+rollup.config.js
 tsconfig.json
-__tests__

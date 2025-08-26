@@ -1,16 +1,14 @@
 import { FieldSchema, ValidationError, ErrorType } from './types';
 import { ErrorHandler } from './error-handler';
 
-// 创建错误处理器实例
-const errorHandler = new ErrorHandler();
-
 // 统一验证函数 - 同时支持同步和异步验证
 export async function validateField(
     schema: FieldSchema,
     value: any,
     errors: Record<string, ValidationError[]>,
     field: string,
-    timeout: number = 5000
+    timeout: number = 5000,
+    errorHandler: ErrorHandler // 添加错误处理器参数
 ): Promise<boolean> {
     if (!schema.validator) return true;
     let isValid = true;

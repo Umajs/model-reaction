@@ -110,7 +110,7 @@ export class ModelManager {
 
     // 验证单个字段
     private async validateSingleField(schema: FieldSchema, value: any, field: string): Promise<boolean> {
-        return validateField(schema, value, this.validationErrors, field, this.asyncValidationTimeout);
+        return validateField(schema, value, this.validationErrors, field, this.asyncValidationTimeout, this.errorHandler);
     }
 
     // 处理有效字段值
@@ -277,7 +277,7 @@ export class ModelManager {
         // 优先使用 dirtyData 中的值，如果没有则使用 data 中的值
         const value = this.dirtyData[field] !== undefined ? this.dirtyData[field] : this.data[field];
         this.validationErrors[field] = [];
-        const isValid = await validateField(schema, value, this.validationErrors, field, this.asyncValidationTimeout);
+        const isValid = await validateField(schema, value, this.validationErrors, field, this.asyncValidationTimeout, this.errorHandler);
         
         if (!isValid) {
             // 验证失败，确保值在 dirtyData 中
