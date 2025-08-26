@@ -1,4 +1,4 @@
-import { ModelManager, Model, ValidationRules, Rule } from '../index';
+import { createModel, Model, ValidationRules, Rule, ModelReturn } from '../index';
 
 describe('ModelManager - Validation', () => {
   const testSchema: Model = {
@@ -35,10 +35,10 @@ describe('ModelManager - Validation', () => {
     }
   };
 
-  let modelManager: ModelManager;
+  let modelManager: ModelReturn;
 
   beforeEach(() => {
-    modelManager = new ModelManager(testSchema, { asyncValidationTimeout: 5000 });
+    modelManager = createModel(testSchema, { asyncValidationTimeout: 5000 });
   });
 
   // 异步验证失败测试
@@ -102,7 +102,7 @@ describe('ModelManager - Validation', () => {
         ]
       }
     };
-    const timeoutModel = new ModelManager(timeoutSchema, { asyncValidationTimeout: 100 });
+    const timeoutModel = createModel(timeoutSchema, { asyncValidationTimeout: 100 });
 
     const result = await timeoutModel.setField('slowField', 'value');
     expect(result).toBe(false);

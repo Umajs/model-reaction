@@ -1,6 +1,6 @@
-import type { Model, ModelOptions, Reaction, ValidationError, FieldSchema } from './types';
+import { Model, ModelOptions, Reaction, ValidationError, FieldSchema, ErrorType } from './types';
 import { validateField, deepEqual } from './utils';
-import { ErrorHandler, ErrorType } from './error-handler';
+import { ErrorHandler } from './error-handler';
 import { EventEmitter } from './event-emitter';
 
 // 核心模型类 - 封装所有模型相关功能

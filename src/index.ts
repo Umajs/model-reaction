@@ -1,11 +1,10 @@
-import type { Model, ModelOptions, ModelReturn } from './types';
+import { Model, ModelOptions, ModelReturn, ErrorType } from './types';
 import { ModelManager } from './model-manager';
 
 // 导出常用类型和验证规则
-export type { Model, ModelOptions, ModelReturn };
+export { Model, ModelOptions, ModelReturn, ErrorType };
 export { ValidationRules, Rule } from './validators';
-export { ErrorType, ErrorHandler } from './error-handler';
-export { ModelManager };
+export { ErrorHandler } from './error-handler';
 
 // 工厂函数 - 创建模型实例
 export function createModel(schema: Model, options: ModelOptions = {}): ModelReturn {

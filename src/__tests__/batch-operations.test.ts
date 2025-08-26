@@ -1,4 +1,4 @@
-import { ModelManager, Model, ValidationRules } from '../index';
+import { createModel, ModelReturn, Model, ValidationRules } from '../index';
 
 describe('ModelManager - Batch Operations', () => {
   const testSchema: Model = {
@@ -19,10 +19,10 @@ describe('ModelManager - Batch Operations', () => {
     }
   };
 
-  let modelManager: ModelManager;
+  let modelManager: ModelReturn;
 
   beforeEach(() => {
-    modelManager = new ModelManager(testSchema, { asyncValidationTimeout: 5000 });
+    modelManager = createModel(testSchema, { asyncValidationTimeout: 5000 });
   });
 
   // 批量更新字段测试

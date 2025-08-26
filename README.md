@@ -28,11 +28,10 @@ yarn add model-reaction
 ### 同步验证示例
 
 ```typescript
-import { ModelManager, Model, ValidationRules } from 'model-reaction';
-import { ErrorType } from 'model-reaction/error-handler';
+import { createModel, Model, ValidationRules, ErrorType } from 'model-reaction';
 
 // 定义模型架构
-const userModel = new ModelManager({
+const userModel = createModel({
   name: {
     type: 'string',
     validator: [
@@ -102,10 +101,10 @@ console.log('清除后脏数据:', userModel.getDirtyData());
 ### 异步验证示例
 
 ```typescript
-import { ModelManager, Model, ValidationRules } from 'model-reaction';
+import { createModel, Model, ValidationRules } from 'model-reaction';
 
 // 定义模型架构
-const asyncUserModel = new ModelManager({
+const asyncUserModel = createModel({
   name: {
     type: 'string',
     validator: [ValidationRules.required.withMessage('用户名不能为空')],
@@ -145,13 +144,13 @@ console.log('脏数据:', asyncUserModel.getDirtyData());
 
 ## API 参考
 
-### ModelManager
+### createModel
 
 模型管理器是库的核心类，提供以下方法：
 
 #### 构造函数
 ```typescript
-new ModelManager(schema: Model, options?: ModelOptions);
+createModel(schema: Model, options?: ModelOptions);
 ```
 
 #### 方法
@@ -214,8 +213,7 @@ new ModelManager(schema: Model, options?: ModelOptions);
 您可以创建自定义验证规则并设置自定义错误消息：
 
 ```typescript
-import { ModelManager, Model } from 'model-reaction';
-import { Rule } from 'model-reaction/validators';
+import { createModel, Model, Rule } from 'model-reaction';
 
 // 创建自定义验证规则
 const customRule = new Rule(
@@ -228,7 +226,7 @@ const customRule = new Rule(
 );
 
 // 在模型中使用，并重写错误消息
-const model = new ModelManager({
+const model = createModel({
   field: {
     type: 'string',
     validator: [
@@ -242,8 +240,7 @@ const model = new ModelManager({
 ### 统一错误处理
 
 ```typescript
-import { ModelManager, Model, ValidationRules } from 'model-reaction';
-import { ErrorHandler, ErrorType } from 'model-reaction/error-handler';
+import { createModel, Model, ValidationRules, ErrorHandler, ErrorType } from 'model-reaction';
 
 // 创建错误处理器
 const errorHandler = new ErrorHandler();
@@ -264,7 +261,7 @@ errorHandler.onError(ErrorType.UNKNOWN, (error) => {
 });
 
 // 定义模型架构，传入自定义错误处理器
-const model = new ModelManager({
+const model = createModel({
   name: {
     type: 'string',
     validator: [ValidationRules.required.withMessage('姓名不能为空')],
@@ -278,10 +275,9 @@ const model = new ModelManager({
 ### 异步转换和验证
 
 ```typescript
-import { ModelManager, Model } from 'model-reaction';
-import { Rule } from 'model-reaction/validators';
+import { createModel, Model, Rule } from 'model-reaction';
 
-const asyncModel = new ModelManager({
+const asyncModel = createModel({
   field: {
     type: 'string',
     transform: async (value: string) => {

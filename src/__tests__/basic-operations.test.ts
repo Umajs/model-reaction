@@ -1,4 +1,4 @@
-import { ModelManager, Model, ValidationRules, ErrorType } from '../index';
+import { createModel, ModelReturn, Model, ValidationRules, ErrorType } from '../index';
 
 describe('ModelManager - Basic Operations', () => {
   const testSchema: Model = {
@@ -14,10 +14,10 @@ describe('ModelManager - Basic Operations', () => {
     }
   };
 
-  let modelManager: ModelManager;
+  let modelManager: ModelReturn;
 
   beforeEach(() => {
-    modelManager = new ModelManager(testSchema, { asyncValidationTimeout: 5000 });
+    modelManager = createModel(testSchema, { asyncValidationTimeout: 5000 });
   });
 
   // 初始化测试

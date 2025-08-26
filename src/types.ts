@@ -1,6 +1,21 @@
 import { ErrorHandler } from './error-handler';
 import type { Rule } from './validators';
 
+export enum ErrorType {
+  VALIDATION = 'validation',
+  REACTION = 'reaction',
+  FIELD_NOT_FOUND = 'field_not_found',
+  DEPENDENCY_ERROR = 'dependency_error',
+  UNKNOWN = 'unknown',
+}
+
+export interface AppError {
+  type: ErrorType;
+  field?: string;
+  message: string;
+  originalError?: Error;
+}
+
 // 增强的验证器接口
 export interface Validator {
     type: string;

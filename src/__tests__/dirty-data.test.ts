@@ -1,4 +1,4 @@
-import { ModelManager, Model, ValidationRules } from '../index';
+import { createModel, Model, ModelReturn, ValidationRules } from '../index';
 
 describe('ModelManager - Dirty Data Management', () => {
   const testSchema: Model = {
@@ -19,10 +19,10 @@ describe('ModelManager - Dirty Data Management', () => {
     }
   };
 
-  let modelManager: ModelManager;
+  let modelManager: ModelReturn;
 
   beforeEach(() => {
-    modelManager = new ModelManager(testSchema, { asyncValidationTimeout: 5000 });
+    modelManager = createModel(testSchema, { asyncValidationTimeout: 5000 });
   });
 
   // dirtyData相关测试

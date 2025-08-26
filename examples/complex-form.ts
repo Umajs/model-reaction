@@ -1,6 +1,4 @@
-import { createModel } from '../src/index';
-import { ValidationRules, Rule } from '../src/validators';
-import { ErrorHandler, ErrorType } from '../src/error-handler';
+import { createModel, ErrorHandler, ErrorType, Rule, ValidationRules } from '../src/index';
 
 // 模拟API调用 - 检查邮箱唯一性
 async function checkEmailUnique(email: string): Promise<boolean> {

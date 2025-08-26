@@ -1,4 +1,4 @@
-import { ModelManager, Model } from '../index';
+import { createModel, Model } from '../index';
 
 describe('ModelManager - Reaction System', () => {
   // 异步反应测试
@@ -15,7 +15,7 @@ describe('ModelManager - Reaction System', () => {
             }
         }
     };
-    const modelManager = new ModelManager(reactionSchema);
+    const modelManager = createModel(reactionSchema);
     await modelManager.setField('firstName', 'John');
     await modelManager.setField('lastName', 'Doe');
     // 由于反应现在是异步的，我们需要等待一下
@@ -41,7 +41,7 @@ describe('ModelManager - Reaction System', () => {
         }
       }
     };
-    const modelManager = new ModelManager(errorReactionSchema);
+    const modelManager = createModel(errorReactionSchema);
 
     await modelManager.setField('input', 'error');
     // 等待反应执行
@@ -67,7 +67,7 @@ describe('ModelManager - Reaction System', () => {
         }
       }
     };
-    const modelManager = new ModelManager(invalidDepsSchema);
+    const modelManager = createModel(invalidDepsSchema);
 
     await modelManager.setField('validField', 'test');
     // 等待反应执行

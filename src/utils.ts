@@ -1,5 +1,5 @@
-import type { FieldSchema, ValidationError } from './types';
-import { ErrorHandler, ErrorType } from './error-handler';
+import { FieldSchema, ValidationError, ErrorType } from './types';
+import { ErrorHandler } from './error-handler';
 
 // 创建错误处理器实例
 const errorHandler = new ErrorHandler();

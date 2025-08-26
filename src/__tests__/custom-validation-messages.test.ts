@@ -1,4 +1,4 @@
-import { ModelManager, Model, ValidationRules, Rule } from '../index';
+import { createModel, Model, ValidationRules, Rule, ModelReturn } from '../index';
 
 describe('ModelManager - Custom Validation Messages', () => {
   const testSchema: Model = {
@@ -34,10 +34,10 @@ describe('ModelManager - Custom Validation Messages', () => {
     }
   };
 
-  let modelManager: ModelManager;
+  let modelManager: ModelReturn;
 
   beforeEach(() => {
-    modelManager = new ModelManager(testSchema);
+    modelManager = createModel(testSchema);
   });
 
   // 测试自定义必填消息

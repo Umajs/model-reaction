@@ -1,19 +1,4 @@
-import type { ValidationError } from './types';
-
-export enum ErrorType {
-  VALIDATION = 'validation',
-  REACTION = 'reaction',
-  FIELD_NOT_FOUND = 'field_not_found',
-  DEPENDENCY_ERROR = 'dependency_error',
-  UNKNOWN = 'unknown',
-}
-
-export interface AppError {
-  type: ErrorType;
-  field?: string;
-  message: string;
-  originalError?: Error;
-}
+import { ErrorType, AppError } from './types';
 
 // 统一错误处理类
 export class ErrorHandler {

@@ -1,4 +1,4 @@
-import { ModelManager, Model, ErrorHandler, ErrorType } from '../index';
+import { createModel, Model, ErrorHandler, ErrorType } from '../index';
 
 describe('ErrorHandler', () => {
   let errorHandler: ErrorHandler;
@@ -49,7 +49,7 @@ describe('ErrorHandler', () => {
       }
     };
 
-    const modelManager = new ModelManager(testSchema);
+    const modelManager = createModel(testSchema);
     const errorCallback = jest.fn();
 
     // 监听字段不存在错误

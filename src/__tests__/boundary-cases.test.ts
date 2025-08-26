@@ -1,4 +1,4 @@
-import { ModelManager, Model, ValidationRules } from '../index';
+import { createModel, Model, ValidationRules } from '../index';
 
 describe('ModelManager - Boundary Cases', () => {
   // 边界情况测试
@@ -15,7 +15,7 @@ describe('ModelManager - Boundary Cases', () => {
         default: ''
       }
     };
-    const modelManager = new ModelManager(nullableSchema);
+    const modelManager = createModel(nullableSchema);
 
     expect(modelManager.getField('nullableField')).toBeNull();
 
@@ -33,7 +33,7 @@ describe('ModelManager - Boundary Cases', () => {
         default: 18
       }
     };
-    const modelManager = new ModelManager(boundarySchema);
+    const modelManager = createModel(boundarySchema);
 
     // 边界值测试
     await modelManager.setField('age', 18);
