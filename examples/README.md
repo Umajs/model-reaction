@@ -16,6 +16,9 @@
 ### 事件监听示例 (event-listening.ts)
 展示如何监听字段变化和验证完成等事件。
 
+### 复杂表单示例 (complex-form.ts)
+展示复杂表单场景下的字段关联、依赖验证和错误处理机制。
+
 ## 运行示例
 
 使用以下命令运行示例：
@@ -25,4 +28,5 @@ npm run example:basic
 npm run example:reaction
 npm run example:async
 npm run example:event
+npm run example:complex
 ```

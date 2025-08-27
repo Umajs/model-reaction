@@ -36,7 +36,7 @@ const userModel = createModel({
     type: 'string',
     validator: [
       ValidationRules.required.withMessage('姓名不能为空'),
-      ValidationRules.minLength(2).withMessage('姓名长度不能少于2个字符')
+      // ValidationRules.minLength(2).withMessage('姓名长度不能少于2个字符')
     ],
     default: '',
   },
@@ -213,7 +213,10 @@ createModel(schema: Model, options?: ModelOptions);
 您可以创建自定义验证规则并设置自定义错误消息：
 
 ```typescript
-import { createModel, Model, Rule } from 'model-reaction';
+import { createModel, Model, Rule, ErrorHandler } from 'model-reaction';
+
+// 创建错误处理器实例
+const errorHandler = new ErrorHandler();
 
 // 创建自定义验证规则
 const customRule = new Rule(
@@ -234,6 +237,8 @@ const model = createModel({
     ],
     default: ''
   }
+}, {
+  errorHandler: errorHandler // 添加errorHandler配置
 });
 ```
 
