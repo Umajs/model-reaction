@@ -33,16 +33,5 @@ export const ValidationRules = {
     ),
     email: new Rule('email', '无效的邮箱格式',
         (v) => typeof v === 'string' && /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v)
-    ),
-    asyncUnique: (fieldName: string) => new Rule(
-        'asyncUnique',
-        `${fieldName} 已存在`,
-        async (v) => {
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    resolve(!!v);
-                }, 500);
-            });
-        }
     )
 };

@@ -103,6 +103,18 @@ console.log('清除后脏数据:', userModel.getDirtyData());
 ```typescript
 import { createModel, Model, ValidationRules } from 'model-reaction';
 
+ValidationRules.asyncUnique: (fieldName: string) => new Rule(
+    'asyncUnique',
+    `${fieldName} 已存在`,
+    async (v) => {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                resolve(!!v);
+            }, 500);
+        });
+    }
+)
+
 // 定义模型架构
 const asyncUserModel = createModel({
   name: {

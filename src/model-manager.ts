@@ -294,7 +294,7 @@ export class ModelManager {
                 this.triggerReactions(field);
             }
         }
-        
+
         return isValid;
     }
 
