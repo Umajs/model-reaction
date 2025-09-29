@@ -22,7 +22,8 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
+            "name": "ts-node: 基本示例",
+            "runtimeExecutable": "ts-node",
             "skipFiles": [
                 "<node_internals>/**"
             ],

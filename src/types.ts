@@ -1,5 +1,4 @@
 import { ErrorHandler } from './error-handler';
-import type { Rule } from './validators';
 
 export enum ErrorType {
   VALIDATION = 'validation',
@@ -44,7 +43,7 @@ export interface FieldSchema {
     // 字段类型 - 增加date和enum类型
     type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'date' | 'enum';
     // 验证规则
-    validator?: (Rule | Validator)[];
+    validator?: Validator[];
     // 默认值
     default?: any;
     // 反应定义
