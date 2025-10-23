@@ -1,5 +1,7 @@
 # model-reaction
 
+[English Version](README.md) | 中文
+
 一个强大的、类型安全的数据模型管理库，支持同步和异步数据验证、依赖反应、脏数据管理和统一错误处理。
 
 ## 项目简介

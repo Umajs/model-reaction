@@ -1,5 +1,7 @@
 # model-reaction
 
+[中文版本](README_CN.md) | English
+
 A powerful, type-safe data model management library supporting synchronous and asynchronous data validation, dependency reactions, dirty data management, and unified error handling.
 
 ## Project Introduction

@@ -1,65 +1,67 @@
-# Model Reaction 库最佳实践指南
+# Model Reaction Library Best Practices Guide
 
-## 1. 性能优化
+[中文版本](BEST_PRACTICES_CN.md) | English
 
-### 大型表单处理
-- 使用 `debounceReactions` 选项减少频繁触发的反应
-- 对不常变化的字段使用 `once` 事件监听器
-- 考虑使用虚拟滚动处理大型列表数据
+## 1. Performance Optimization
 
-### 异步验证优化
-- 实现验证结果缓存，避免重复验证相同值
-- 使用 `asyncValidationTimeout` 控制验证超时
-- 对用户输入使用防抖处理，减少验证请求次数
+### Large Form Handling
+- Use the `debounceReactions` option to reduce frequently triggered reactions
+- Use `once` event listeners for fields that don't change often
+- Consider using virtual scrolling for large list data
 
-## 2. 错误处理
+### Asynchronous Validation Optimization
+- Implement validation result caching to avoid re-validating the same values
+- Use `asyncValidationTimeout` to control validation timeouts
+- Apply debouncing to user input to reduce the number of validation requests
 
-### 全局错误处理
+## 2. Error Handling
+
+### Global Error Handling
 ```typescript
 const errorHandler = new ErrorHandler();
 errorHandler.onError(ErrorType.ALL, (error) => {
-  console.error('发生错误:', error);
-  // 显示全局错误通知
+  console.error('Error occurred:', error);
+  // Display global error notification
 });
 ```
 
-### 字段级错误处理
-- 使用 `validationErrors` 对象获取特定字段的错误
-- 结合 UI 显示每个字段的错误信息
-- 使用 `getValidationSummary()` 获取错误摘要
+### Field-Level Error Handling
+- Use the `validationErrors` object to get errors for specific fields
+- Display error messages for each field in the UI
+- Use `getValidationSummary()` to get an error summary
 
-## 3. 复杂业务规则
+## 3. Complex Business Rules
 
-### 反应系统设计
-- 保持 `computed` 函数纯净，只用于计算值
-- 在 `action` 中处理副作用
-- 使用依赖图优化复杂反应链
+### Reaction System Design
+- Keep `computed` functions pure, only for calculating values
+- Handle side effects in `action`
+- Use dependency graphs to optimize complex reaction chains
 
-### 条件验证
-- 使用自定义 `Rule` 实现复杂条件验证
-- 利用验证器的 `data` 参数访问其他字段值
-- 对于复杂逻辑，考虑封装为独立验证服务
+### Conditional Validation
+- Implement complex conditional validation using custom `Rule`
+- Access other field values using the validator's `data` parameter
+- For complex logic, consider encapsulating it as a separate validation service
 
-## 4. 测试策略
+## 4. Testing Strategy
 
-### 单元测试
-- 测试每个字段的验证规则
-- 测试反应系统的正确性
-- 测试错误处理流程
+### Unit Testing
+- Test validation rules for each field
+- Test the correctness of the reaction system
+- Test error handling flow
 
-### 集成测试
-- 测试完整表单提交流程
-- 测试异步验证集成
-- 测试与 UI 组件的交互
+### Integration Testing
+- Test complete form submission flow
+- Test asynchronous validation integration
+- Test interaction with UI components
 
-## 5. 代码组织
+## 5. Code Organization
 
-### 大型应用结构
-- 按功能模块组织模型定义
-- 将通用验证规则提取为共享库
-- 使用组合而非继承扩展模型功能
+### Large Application Structure
+- Organize model definitions by functional modules
+- Extract common validation rules into shared libraries
+- Use composition instead of inheritance to extend model functionality
 
-### 可维护性建议
-- 为每个模型添加清晰的文档注释
-- 保持模型定义简洁，避免过度复杂
-- 定期重构和优化反应系统
+### Maintainability Recommendations
+- Add clear documentation comments for each model
+- Keep model definitions concise, avoiding excessive complexity
+- Regularly refactor and optimize the reaction system
