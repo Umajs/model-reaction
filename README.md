@@ -1,51 +1,51 @@
 # model-reaction
 
-一个强大的、类型安全的数据模型管理库，支持同步和异步数据验证、依赖反应、脏数据管理和统一错误处理。
+A powerful, type-safe data model management library supporting synchronous and asynchronous data validation, dependency reactions, dirty data management, and unified error handling.
 
-## 项目简介
+## Project Introduction
 
-`model-reaction` 是一个用于管理应用程序数据模型的 TypeScript 库，提供以下核心功能：
+`model-reaction` is a TypeScript library for managing application data models, providing the following core features:
 
-- **数据验证**：支持同步和异步验证规则，支持自定义验证消息
-- **依赖反应**：当指定字段变化时，自动触发相关计算和操作
-- **脏数据管理**：跟踪验证失败的数据，并提供清除功能
-- **事件系统**：支持订阅字段变化、验证完成和错误事件
-- **错误处理**：统一的错误处理机制，支持错误类型分类和自定义错误监听
-- **类型安全**：完全基于 TypeScript 构建，提供良好的类型提示
+- **Data Validation**: Supports synchronous and asynchronous validation rules, with custom validation messages
+- **Dependency Reactions**: Automatically triggers related calculations and operations when specified fields change
+- **Dirty Data Management**: Tracks validation-failed data and provides clearing functionality
+- **Event System**: Supports subscribing to field changes, validation completion, and error events
+- **Error Handling**: Unified error handling mechanism, supporting error type classification and custom error listening
+- **Type Safety**: Built entirely on TypeScript, providing excellent type hints
 
-## 安装
+## Installation
 
 ```bash
-# 使用 npm
+# Using npm
 npm install model-reaction
 
-# 使用 yarn
+# Using yarn
 yarn add model-reaction
 ```
 
-## 基本使用
+## Basic Usage
 
-### 同步验证示例
+### Synchronous Validation Example
 
 ```typescript
 import { createModel, Model, ValidationRules, ErrorType } from 'model-reaction';
 
-// 定义模型架构
+// Define model schema
 const userModel = createModel({
   name: {
     type: 'string',
     validator: [
-      ValidationRules.required.withMessage('姓名不能为空'),
-      // ValidationRules.minLength(2).withMessage('姓名长度不能少于2个字符')
+      ValidationRules.required.withMessage('Name cannot be empty'),
+      // ValidationRules.minLength(2).withMessage('Name length cannot be less than 2 characters')
     ],
     default: '',
   },
   age: {
     type: 'number',
     validator: [
-      ValidationRules.required.withMessage('年龄不能为空'),
-      ValidationRules.number.withMessage('年龄必须是数字'),
-      ValidationRules.min(18).withMessage('年龄必须大于等于18岁')
+      ValidationRules.required.withMessage('Age cannot be empty'),
+      ValidationRules.number.withMessage('Age must be a number'),
+      ValidationRules.min(18).withMessage('Age must be greater than or equal to 18')
     ],
     default: 18
   },
@@ -63,49 +63,49 @@ const userModel = createModel({
   asyncValidationTimeout: 5000
 });
 
-// 订阅错误事件
+// Subscribe to error events
 userModel.on('validation:error', (error) => {
-  console.error(`验证错误: ${error.field} - ${error.message}`);
+  console.error(`Validation error: ${error.field} - ${error.message}`);
 });
 
 userModel.on('field:not-found', (error) => {
-  console.error(`字段不存在: ${error.field}`);
+  console.error(`Field not found: ${error.field}`);
 });
 
-// 设置字段值
+// Set field values
 await userModel.setField('name', 'John');
 await userModel.setField('age', 30);
 
-// 尝试设置不存在的字段
+// Try to set non-existent field
 await userModel.setField('nonexistentField', 'value');
 
-// 获取字段值
-console.log('姓名:', userModel.getField('name')); // 输出: John
-console.log('年龄:', userModel.getField('age')); // 输出: 30
-console.log('信息:', userModel.getField('info')); // 输出: My name is John and I am 30 years old.
+// Get field values
+console.log('Name:', userModel.getField('name')); // Output: John
+console.log('Age:', userModel.getField('age')); // Output: 30
+console.log('Info:', userModel.getField('info')); // Output: My name is John and I am 30 years old.
 
-// 验证所有字段
+// Validate all fields
 const isValid = await userModel.validateAll();
-console.log('验证是否通过:', isValid);
-console.log('验证错误:', userModel.validationErrors);
-console.log('验证摘要:', userModel.getValidationSummary());
+console.log('Validation passed:', isValid);
+console.log('Validation errors:', userModel.validationErrors);
+console.log('Validation summary:', userModel.getValidationSummary());
 
-// 获取脏数据
-console.log('脏数据:', userModel.getDirtyData());
+// Get dirty data
+console.log('Dirty data:', userModel.getDirtyData());
 
-// 清除脏数据
+// Clear dirty data
 userModel.clearDirtyData();
-console.log('清除后脏数据:', userModel.getDirtyData());
+console.log('Dirty data after clearing:', userModel.getDirtyData());
 ```
 
-### 异步验证示例
+### Asynchronous Validation Example
 
 ```typescript
 import { createModel, Model, ValidationRules } from 'model-reaction';
 
 ValidationRules.asyncUnique: (fieldName: string) => new Rule(
     'asyncUnique',
-    `${fieldName} 已存在`,
+    `${fieldName} already exists`,
     async (v) => {
         return new Promise((resolve) => {
             setTimeout(() => {
@@ -115,28 +115,28 @@ ValidationRules.asyncUnique: (fieldName: string) => new Rule(
     }
 )
 
-// 定义模型架构
+// Define model schema
 const asyncUserModel = createModel({
   name: {
     type: 'string',
-    validator: [ValidationRules.required.withMessage('用户名不能为空')],
+    validator: [ValidationRules.required.withMessage('Username cannot be empty')],
     default: '',
   },
   username: {
     type: 'string',
     validator: [
-      ValidationRules.required.withMessage('账号不能为空'),
+      ValidationRules.required.withMessage('Account cannot be empty'),
       ValidationRules.asyncUnique(
         async (value: string): Promise<boolean> => {
-          // 模拟异步检查用户名是否已存在
+          // Simulate asynchronous check if username already exists
           return new Promise<boolean>((resolve) => {
             setTimeout(() => {
-              // 假设 'admin' 已被占用
+              // Assume 'admin' is already taken
               resolve(value !== 'admin');
             }, 100);
           });
         }
-      ).withMessage('用户名已存在')
+      ).withMessage('Username already exists')
     ],
     default: ''
   }
@@ -144,144 +144,144 @@ const asyncUserModel = createModel({
   asyncValidationTimeout: 3000
 });
 
-// 异步设置字段值
+// Asynchronously set field value
 const result1 = await asyncUserModel.setField('username', 'newuser');
-console.log('设置新用户名结果:', result1); // 输出: true
+console.log('Setting new username result:', result1); // Output: true
 
 const result2 = await asyncUserModel.setField('username', 'admin');
-console.log('设置已存在用户名结果:', result2); // 输出: false
-console.log('验证错误:', asyncUserModel.validationErrors);
-console.log('脏数据:', asyncUserModel.getDirtyData());
+console.log('Setting existing username result:', result2); // Output: false
+console.log('Validation errors:', asyncUserModel.validationErrors);
+console.log('Dirty data:', asyncUserModel.getDirtyData());
 ```
 
-## API 参考
+## API Reference
 
 ### createModel
 
-模型管理器是库的核心类，提供以下方法：
+The model manager is the core class of the library, providing the following methods:
 
-#### 构造函数
+#### Constructor
 ```typescript
 createModel(schema: Model, options?: ModelOptions);
 ```
 
-#### 方法
+#### Methods
 
-- `setField(field: string, value: any): Promise<boolean>`: 设置单个字段值，返回验证结果
-- `setFields(fields: Record<string, any>): Promise<boolean>`: 批量设置字段值，返回验证结果
-- `getField(field: string): any`: 获取字段值
-- `validateAll(): Promise<boolean>`: 验证所有字段，返回整体验证结果
-- `getValidationSummary(): string`: 获取验证摘要信息
-- `getDirtyData(): Record<string, any>`: 获取验证失败的脏数据
-- `clearDirtyData(): void`: 清除所有脏数据
-- `on(event: string, callback: (data: any) => void): void`: 订阅事件
-- `off(event: string, callback?: (data: any) => void): void`: 取消订阅事件
-- `emit(event: string, data: any): void`: 触发事件
+- `setField(field: string, value: any): Promise<boolean>`: Set a single field value, returns validation result
+- `setFields(fields: Record<string, any>): Promise<boolean>`: Batch set field values, returns validation result
+- `getField(field: string): any`: Get field value
+- `validateAll(): Promise<boolean>`: Validate all fields, returns overall validation result
+- `getValidationSummary(): string`: Get validation summary information
+- `getDirtyData(): Record<string, any>`: Get validation-failed dirty data
+- `clearDirtyData(): void`: Clear all dirty data
+- `on(event: string, callback: (data: any) => void): void`: Subscribe to events
+- `off(event: string, callback?: (data: any) => void): void`: Unsubscribe from events
+- `emit(event: string, data: any): void`: Trigger events
 
-#### 事件
+#### Events
 
-- `field:change`: 字段值变化时触发
-- `validation:complete`: 验证完成时触发
-- `validation:error`: 验证错误时触发
-- `reaction:error`: 反应处理错误时触发
-- `field:not-found`: 尝试访问不存在的字段时触发
-- `error`: 任何错误发生时都会触发的通用错误事件
+- `field:change`: Triggered when field value changes
+- `validation:complete`: Triggered when validation is complete
+- `validation:error`: Triggered when validation error occurs
+- `reaction:error`: Triggered when reaction processing error occurs
+- `field:not-found`: Triggered when attempting to access a non-existent field
+- `error`: General error event triggered when any error occurs
 
 ### ModelOptions
 
-模型配置选项：
+Model configuration options:
 
-- `debounceReactions?: number`: 反应触发的防抖时间（毫秒）
-- `asyncValidationTimeout?: number`: 异步验证的超时时间（毫秒）
-- `errorFormatter?: (error: ValidationError) => string`: 自定义错误格式化函数
+- `debounceReactions?: number`: Debounce time for reaction triggering (in milliseconds)
+- `asyncValidationTimeout?: number`: Timeout time for asynchronous validation (in milliseconds)
+- `errorFormatter?: (error: ValidationError) => string`: Custom error formatting function
 
 ### ErrorHandler
 
-错误处理器提供统一的错误管理：
+Error handler provides unified error management:
 
-- `onError(type: ErrorType, callback: (error: AppError) => void): void`: 订阅特定类型的错误
-- `offError(type: ErrorType, callback?: (error: AppError) => void): void`: 取消订阅特定类型的错误
-- `triggerError(error: AppError): void`: 触发错误
-- `createValidationError(field: string, message: string): AppError`: 创建验证错误
-- `createFieldNotFoundError(field: string): AppError`: 创建字段不存在错误
-- ... 其他错误创建方法
+- `onError(type: ErrorType, callback: (error: AppError) => void): void`: Subscribe to specific type of error
+- `offError(type: ErrorType, callback?: (error: AppError) => void): void`: Unsubscribe from specific type of error
+- `triggerError(error: AppError): void`: Trigger error
+- `createValidationError(field: string, message: string): AppError`: Create validation error
+- `createFieldNotFoundError(field: string): AppError`: Create field not found error
+- ... other error creation methods
 
-### ErrorType 枚举
+### ErrorType Enum
 
-- `VALIDATION`: 验证错误
-- `FIELD_NOT_FOUND`: 字段不存在错误
-- `REACTION_ERROR`: 反应处理错误
-- `ASYNC_VALIDATION_TIMEOUT`: 异步验证超时错误
-- `UNKNOWN`: 未知错误
+- `VALIDATION`: Validation error
+- `FIELD_NOT_FOUND`: Field not found error
+- `REACTION_ERROR`: Reaction processing error
+- `ASYNC_VALIDATION_TIMEOUT`: Asynchronous validation timeout error
+- `UNKNOWN`: Unknown error
 
-### 类型定义
+### Type Definitions
 
-详细类型定义请参考 `src/types.ts` 文件。
+For detailed type definitions, please refer to the `src/types.ts` file.
 
-## 高级用法
+## Advanced Usage
 
-### 自定义验证规则和消息
+### Custom Validation Rules and Messages
 
-您可以创建自定义验证规则并设置自定义错误消息：
+You can create custom validation rules and set custom error messages:
 
 ```typescript
 import { createModel, Model, Rule, ErrorHandler } from 'model-reaction';
 
-// 创建错误处理器实例
+// Create error handler instance
 const errorHandler = new ErrorHandler();
 
-// 创建自定义验证规则
+// Create custom validation rule
 const customRule = new Rule(
   'custom',
-  '不符合自定义规则', // 默认错误消息
+  'Does not meet custom rules', // Default error message
   (value: any) => {
-    // 自定义验证逻辑
+    // Custom validation logic
     return value === 'custom';
   }
 );
 
-// 在模型中使用，并重写错误消息
+// Use in model and override error message
 const model = createModel({
   field: {
     type: 'string',
     validator: [
-      customRule.withMessage('字段值必须为"custom"')
+      customRule.withMessage('Field value must be "custom"')
     ],
     default: ''
   }
 }, {
-  errorHandler: errorHandler // 添加errorHandler配置
+  errorHandler: errorHandler // Add errorHandler configuration
 });
 ```
 
-### 统一错误处理
+### Unified Error Handling
 
 ```typescript
 import { createModel, Model, ValidationRules, ErrorHandler, ErrorType } from 'model-reaction';
 
-// 创建错误处理器
+// Create error handler
 const errorHandler = new ErrorHandler();
 
-// 订阅所有验证错误
+// Subscribe to all validation errors
 errorHandler.onError(ErrorType.VALIDATION, (error) => {
-  console.error(`验证错误: ${error.field} - ${error.message}`);
+  console.error(`Validation error: ${error.field} - ${error.message}`);
 });
 
-// 订阅字段不存在错误
+// Subscribe to field not found errors
 errorHandler.onError(ErrorType.FIELD_NOT_FOUND, (error) => {
-  console.error(`字段不存在: ${error.field}`);
+  console.error(`Field not found: ${error.field}`);
 });
 
-// 订阅所有错误
+// Subscribe to all errors
 errorHandler.onError(ErrorType.UNKNOWN, (error) => {
-  console.error(`未知错误: ${error.message}`);
+  console.error(`Unknown error: ${error.message}`);
 });
 
-// 定义模型架构，传入自定义错误处理器
+// Define model schema, pass custom error handler
 const model = createModel({
   name: {
     type: 'string',
-    validator: [ValidationRules.required.withMessage('姓名不能为空')],
+    validator: [ValidationRules.required.withMessage('Name cannot be empty')],
     default: ''
   }
 }, {
@@ -289,7 +289,7 @@ const model = createModel({
 });
 ```
 
-### 异步转换和验证
+### Asynchronous Transformation and Validation
 
 ```typescript
 import { createModel, Model, Rule } from 'model-reaction';
@@ -298,28 +298,28 @@ const asyncModel = createModel({
   field: {
     type: 'string',
     transform: async (value: string) => {
-      // 异步转换值
+      // Asynchronously transform value
       return value.toUpperCase();
     },
     validator: [
       new Rule(
         'asyncValidator',
-        '异步验证失败',
+        'Asynchronous validation failed',
         async (value: string) => {
-          // 异步验证逻辑
+          // Asynchronous validation logic
           return value.length > 3;
         }
-      ).withMessage('字段长度必须大于3个字符')
+      ).withMessage('Field length must be greater than 3 characters')
     ],
     default: ''
   }
 });
 ```
 
-## 示例
+## Examples
 
-更多示例请查看 `examples/` 目录下的文件。
+For more examples, please check the files in the `examples/` directory.
 
-## 最佳实践
+## Best Practices
 
-请参考 `BEST_PRACTICES.md` 文件中的最佳实践指南。
+Please refer to the best practices guide in the `BEST_PRACTICES.md` file.
