@@ -1,27 +1,29 @@
-# model-reaction 示例
+# model-reaction Examples
 
-这里提供了 `model-reaction` 库的各种使用场景示例。
+[中文版本](README_CN.md) | English
 
-## 可用示例
+This directory provides various usage examples for the `model-reaction` library.
 
-### 基本使用示例 (basic-usage.ts)
-展示库的基本功能，包括模型创建、字段设置、验证等。
+## Available Examples
 
-### 反应系统示例 (reaction-system.ts)
-展示依赖反应系统，当指定字段变化时自动触发计算和操作。
+### Basic Usage Example (basic-usage.ts)
+Demonstrates the basic functionality of the library, including model creation, field settings, validation, etc.
 
-### 异步验证示例 (async-validation.ts)
-展示如何使用异步验证规则，如用户名唯一性检查。
+### Reaction System Example (reaction-system.ts)
+Shows the dependency reaction system, which automatically triggers calculations and operations when specified fields change.
 
-### 事件监听示例 (event-listening.ts)
-展示如何监听字段变化和验证完成等事件。
+### Async Validation Example (async-validation.ts)
+Demonstrates how to use asynchronous validation rules, such as username uniqueness checks.
 
-### 复杂表单示例 (complex-form.ts)
-展示复杂表单场景下的字段关联、依赖验证和错误处理机制。
+### Event Listening Example (event-listening.ts)
+Shows how to listen for events such as field changes and validation completion.
 
-## 运行示例
+### Complex Form Example (complex-form.ts)
+Demonstrates field correlation, dependency validation, and error handling mechanisms in complex form scenarios.
 
-使用以下命令运行示例：
+## Running Examples
+
+Use the following commands to run the examples:
 
 ```bash
 npm run example:basic
