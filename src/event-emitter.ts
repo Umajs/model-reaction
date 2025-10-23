@@ -1,8 +1,8 @@
-// 事件发射器类
+// Event emitter class
 export class EventEmitter {
     private events: Record<string, Array<(data: any) => void>> = {};
 
-    // 订阅事件
+    // Subscribe to event
     on(event: string, callback: (data: any) => void): void {
         if (!this.events[event]) {
             this.events[event] = [];
@@ -10,7 +10,7 @@ export class EventEmitter {
         this.events[event].push(callback);
     }
 
-    // 取消订阅
+    // Unsubscribe from event
     off(event: string, callback?: (data: any) => void): void {
         if (!this.events[event]) return;
 
@@ -23,14 +23,14 @@ export class EventEmitter {
         }
     }
 
-    // 触发事件
+    // Trigger event
     emit(event: string, data: any): void {
         if (this.events[event]) {
             this.events[event].forEach((callback) => callback(data));
         }
     }
 
-    // 一次性事件订阅
+    // One-time event subscription
     once(event: string, callback: (data: any) => void): void {
         const wrapper = (data: any) => {
             callback(data);

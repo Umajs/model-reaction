@@ -1,7 +1,7 @@
 import { createModel, Model, ValidationRules } from '../index';
 
 describe('ModelManager - Boundary Cases', () => {
-  // 边界情况测试
+  // Boundary cases test
   test('should handle null and undefined values correctly', async () => {
     const nullableSchema: Model = {
       nullableField: {
@@ -21,10 +21,10 @@ describe('ModelManager - Boundary Cases', () => {
 
     await modelManager.setField('requiredField', null);
     await modelManager.validateAll();
-    expect(modelManager.getValidationSummary()).toContain('requiredField: 该字段为必填项');
+    expect(modelManager.getValidationSummary()).toContain('requiredField: This field is required');
   });
 
-  // 边界值测试
+  // Boundary values test
   test('should handle boundary values for number validation', async () => {
     const boundarySchema: Model = {
       age: {
@@ -35,18 +35,18 @@ describe('ModelManager - Boundary Cases', () => {
     };
     const modelManager = createModel(boundarySchema);
 
-    // 边界值测试
+    // Boundary value test
     await modelManager.setField('age', 18);
     await modelManager.validateAll();
-    expect(modelManager.getValidationSummary()).toBe('验证通过');
+    expect(modelManager.getValidationSummary()).toBe('Validation passed');
 
     await modelManager.setField('age', 17.9);
     await modelManager.validateAll();
-    expect(modelManager.getValidationSummary()).toContain('age: 值必须大于等于18');
+    expect(modelManager.getValidationSummary()).toContain('age: Value must be greater than or equal to 18');
 
     await modelManager.setField('age', Number.MAX_SAFE_INTEGER);
     await modelManager.validateAll();
-    // 大整数应该通过验证
-    expect(modelManager.getValidationSummary()).toBe('验证通过');
+    // Large integers should pass validation
+    expect(modelManager.getValidationSummary()).toBe('Validation passed');
   });
 });

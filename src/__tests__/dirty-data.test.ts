@@ -25,29 +25,29 @@ describe('ModelManager - Dirty Data Management', () => {
     modelManager = createModel(testSchema, { asyncValidationTimeout: 5000 });
   });
 
-  // dirtyData相关测试
+  // Dirty data related tests
   test('should manage dirty data correctly', async () => {
-    // 初始状态下dirtyData应为空
+    // dirtyData should be empty in initial state
     expect(modelManager.getDirtyData()).toEqual({});
 
-    // 设置无效值后，验证dirtyData包含该字段
+    // After setting invalid value, verify dirtyData contains the field
     await modelManager.setField('age', 'invalid-age');
     expect(modelManager.getDirtyData()).toHaveProperty('age');
     expect(modelManager.getDirtyData().age).toBe('invalid-age');
 
-    // 清除dirtyData后，验证其为空
+    // After clearing dirtyData, verify it is empty
     modelManager.clearDirtyData();
     expect(modelManager.getDirtyData()).toEqual({});
 
-    // 设置有效值后，验证dirtyData不包含该字段
+    // After setting valid value, verify dirtyData does not contain the field
     await modelManager.setField('name', 'Valid Name');
     expect(modelManager.getDirtyData()).not.toHaveProperty('name');
 
-    // 设置另一个无效值
+    // Set another invalid value
     await modelManager.setField('email', 'invalid-email');
     expect(modelManager.getDirtyData()).toHaveProperty('email');
 
-    // 修复无效值后，验证dirtyData中不再包含该字段
+    // After fixing invalid value, verify dirtyData no longer contains the field
     await modelManager.setField('email', 'valid@example.com');
     expect(modelManager.getDirtyData()).not.toHaveProperty('email');
   });

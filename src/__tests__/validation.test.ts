@@ -23,7 +23,7 @@ describe('ModelManager - Validation', () => {
         ValidationRules.required,
         {
           type: 'asyncUnique',
-          message: '用户名已存在',
+          message: 'Username already exists',
           validate: async (value: string): Promise<boolean> => {
           return new Promise<boolean>((resolve) => {
             setTimeout(() => {
@@ -41,23 +41,23 @@ describe('ModelManager - Validation', () => {
     modelManager = createModel(testSchema, { asyncValidationTimeout: 5000 });
   });
 
-  // 异步验证失败测试
+  // Asynchronous validation failure test
   test('should reject invalid field values and not update asynchronously', async () => {
-    // 保存原始值
+    // Save original value
     const originalAge = modelManager.getField('age');
     
-    // 尝试设置无效值
+    // Try to set invalid value
     const result = await modelManager.setField('age', 'not-a-number');
     
-    // 验证返回值
+    // Validate return value
     expect(result).toBe(false);
-    // 验证值未被更新
+    // Validate value not updated
     expect(modelManager.getField('age')).toBe(originalAge);
-    // 验证错误信息
-    expect(modelManager.getValidationSummary()).toContain('age: 必须为数字');
+    // Validate error message
+    expect(modelManager.getValidationSummary()).toContain('age: Must be a number');
   });
 
-  // 异步整体验证测试
+  // Asynchronous overall validation test
   test('should validate all fields asynchronously', async () => {
     modelManager.clearDirtyData();
     await modelManager.setField('name', '');
@@ -69,30 +69,30 @@ describe('ModelManager - Validation', () => {
     expect(modelManager.validationErrors).toHaveProperty('age');
   });
 
-  // 异步验证规则测试
+  // Asynchronous validation rule test
   test('should handle async validation rules', async () => {
-    // 测试可用用户名
+    // Test available username
     const result1 = await modelManager.setField('username', 'newuser');
     expect(result1).toBe(true);
     expect(modelManager.validationErrors.username).toEqual([])
 
-    // 测试已占用用户名
+    // Test taken username
     const result2 = await modelManager.setField('username', 'admin');
     expect(result2).toBe(false);
     expect(modelManager.validationErrors.username).toBeDefined();
-    expect(modelManager.getValidationSummary()).toContain('username: 用户名已存在');
+    expect(modelManager.getValidationSummary()).toContain('username: Username already exists');
   });
 
-  // 异步验证超时测试
+  // Asynchronous validation timeout test
   test('should handle async validation timeout', async () => {
-    // 创建一个会超时的验证器
+    // Create a validator that will timeout
     const timeoutSchema: Model = {
       slowField: {
         type: 'string',
         validator: [
           new Rule(
             'asyncTimeout',
-            '验证超时',
+            'Validation timeout',
             async () => {
               return new Promise<boolean>((resolve) => {
                 setTimeout(() => resolve(false), 10000);
@@ -106,10 +106,10 @@ describe('ModelManager - Validation', () => {
 
     const result = await timeoutModel.setField('slowField', 'value');
     expect(result).toBe(false);
-    expect(timeoutModel.getValidationSummary()).toContain('slowField: 验证失败: 验证超时');
+    expect(timeoutModel.getValidationSummary()).toContain('slowField: Validation failed: Validation timeout');
   });
 
-  // 无效批量更新测试
+  // Invalid batch update test
   test('should reject invalid batch updates asynchronously', async () => {
     const result = await modelManager.setFields({
       name: '',
@@ -117,8 +117,8 @@ describe('ModelManager - Validation', () => {
       email: 'not-an-email'
     });
     expect(result).toBe(false);
-    expect(modelManager.getValidationSummary()).toContain('name: 该字段为必填项');
-    expect(modelManager.getValidationSummary()).toContain('age: 必须为数字');
-    expect(modelManager.getValidationSummary()).toContain('email: 无效的邮箱格式');
+    expect(modelManager.getValidationSummary()).toContain('name: This field is required');
+    expect(modelManager.getValidationSummary()).toContain('age: Must be a number');
+    expect(modelManager.getValidationSummary()).toContain('email: Invalid email format');
   });
 });

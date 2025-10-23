@@ -25,7 +25,7 @@ describe('ModelManager - Batch Operations', () => {
     modelManager = createModel(testSchema, { asyncValidationTimeout: 5000 });
   });
 
-  // 批量更新字段测试
+  // Batch field update test
   test('should handle batch field updates asynchronously', async () => {
     const result = await modelManager.setFields({
       name: 'Batch User',
@@ -36,7 +36,7 @@ describe('ModelManager - Batch Operations', () => {
     expect(modelManager.getField('name')).toBe('Batch User');
     expect(modelManager.getField('age')).toBe(25);
     expect(modelManager.getField('email')).toBe('batch@example.com');
-    // 验证dirtyData不包含有效数据
+    // Validate dirtyData does not contain valid data
     expect(modelManager.getDirtyData()).toEqual({});
   });
 });

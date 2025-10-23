@@ -4,15 +4,15 @@ describe('ModelManager - Custom Validation Messages', () => {
   const testSchema: Model = {
     name: {
       type: 'string',
-      validator: [ValidationRules.required.withMessage('名称不能为空')],
+      validator: [ValidationRules.required.withMessage('Name cannot be empty')],
       default: ''
     },
     age: {
       type: 'number',
       validator: [
-        ValidationRules.required.withMessage('年龄必须填写'),
-        ValidationRules.number.withMessage('年龄必须是数字'),
-        ValidationRules.min(18).withMessage('年龄必须满18岁')
+        ValidationRules.required.withMessage('Age must be filled'),
+        ValidationRules.number.withMessage('Age must be a number'),
+        ValidationRules.min(18).withMessage('Age must be at least 18')
       ],
       default: 18
     },
@@ -20,16 +20,16 @@ describe('ModelManager - Custom Validation Messages', () => {
       type: 'string',
       validator: [
         ValidationRules.required,
-        ValidationRules.email.withMessage('请输入有效的邮箱地址')
+        ValidationRules.email.withMessage('Please enter a valid email address')
       ],
       default: ''
     },
     customRule: {
       type: 'string',
       validator: [
-        new Rule('customPattern', '默认错误消息', (value: string) => {
+        new Rule('customPattern', 'Default error message', (value: string) => {
           return value.startsWith('custom_');
-        }).withMessage('值必须以 custom_ 开头')
+        }).withMessage('Value must start with custom_')
       ]
     }
   };
@@ -40,39 +40,39 @@ describe('ModelManager - Custom Validation Messages', () => {
     modelManager = createModel(testSchema);
   });
 
-  // 测试自定义必填消息
+  // Test custom required message
   test('should use custom required message', async () => {
     await modelManager.setField('name', '');
-    expect(modelManager.getValidationSummary()).toContain('name: 名称不能为空');
+    expect(modelManager.getValidationSummary()).toContain('name: Name cannot be empty');
   });
 
-  // 测试自定义数字消息
+  // Test custom number message
   test('should use custom number message', async () => {
     await modelManager.setField('age', 'not-a-number');
-    expect(modelManager.getValidationSummary()).toContain('age: 年龄必须是数字');
+    expect(modelManager.getValidationSummary()).toContain('age: Age must be a number');
   });
 
-  // 测试自定义最小值消息
+  // Test custom min message
   test('should use custom min message', async () => {
     await modelManager.setField('age', 16);
-    expect(modelManager.getValidationSummary()).toContain('age: 年龄必须满18岁');
+    expect(modelManager.getValidationSummary()).toContain('age: Age must be at least 18');
   });
 
-  // 测试自定义邮箱消息
+  // Test custom email message
   test('should use custom email message', async () => {
     await modelManager.setField('email', 'invalid-email');
-    expect(modelManager.getValidationSummary()).toContain('email: 请输入有效的邮箱地址');
+    expect(modelManager.getValidationSummary()).toContain('email: Please enter a valid email address');
   });
 
-  // 测试自定义规则消息
+  // Test custom rule message
   test('should use custom rule message', async () => {
     await modelManager.setField('customRule', 'wrong_value');
-    expect(modelManager.getValidationSummary()).toContain('customRule: 值必须以 custom_ 开头');
+    expect(modelManager.getValidationSummary()).toContain('customRule: Value must start with custom_');
   });
 
-  // 测试未自定义的消息使用默认值
+  // Test default message usage when no custom message is set
   test('should use default message when custom message is not set', async () => {
     await modelManager.setField('email', '');
-    expect(modelManager.getValidationSummary()).toContain('email: 该字段为必填项');
+    expect(modelManager.getValidationSummary()).toContain('email: This field is required');
   });
 });

@@ -7,39 +7,39 @@ describe('ErrorHandler', () => {
     errorHandler = new ErrorHandler();
   });
 
-  // 测试错误订阅和触发
+  // Test error subscription and triggering
   test('should subscribe to and trigger errors', () => {
     const validationErrorCallback = jest.fn();
     const unknownErrorCallback = jest.fn();
 
-    // 订阅特定类型错误
+    // Subscribe to specific error type
     errorHandler.onError(ErrorType.VALIDATION, validationErrorCallback);
-    // 订阅未知类型错误
+    // Subscribe to unknown error type
     errorHandler.onError(ErrorType.UNKNOWN, unknownErrorCallback);
 
-    // 创建并触发验证错误
-    const validationError = errorHandler.createValidationError('name', '名称不能为空');
+    // Create and trigger validation error
+    const validationError = errorHandler.createValidationError('name', 'Name cannot be empty');
     errorHandler.triggerError(validationError);
 
-    // 验证回调被调用
+    // Validate callbacks were called
     expect(validationErrorCallback).toHaveBeenCalledWith(validationError);
     expect(unknownErrorCallback).toHaveBeenCalledWith(validationError);
   });
 
-  // 测试取消订阅
+  // Test unsubscription
   test('should unsubscribe from errors', () => {
     const callback = jest.fn();
 
     errorHandler.onError(ErrorType.VALIDATION, callback);
     errorHandler.offError(ErrorType.VALIDATION, callback);
 
-    const error = errorHandler.createValidationError('name', '名称不能为空');
+    const error = errorHandler.createValidationError('name', 'Name cannot be empty');
     errorHandler.triggerError(error);
 
     expect(callback).not.toHaveBeenCalled();
   });
 
-  // 测试ModelManager中的错误处理
+  // Test error handling in ModelManager
   test('should handle errors in ModelManager', async () => {
     const testSchema: Model = {
       name: {
@@ -52,13 +52,13 @@ describe('ErrorHandler', () => {
     const modelManager = createModel(testSchema);
     const errorCallback = jest.fn();
 
-    // 监听字段不存在错误
+    // Listen for field not found error
     modelManager.on('field:not-found', errorCallback);
 
-    // 尝试设置不存在的字段
+    // Try to set non-existent field
     await modelManager.setField('nonexistentField', 'value');
 
-    // 验证错误被触发
+    // Validate error was triggered
     expect(errorCallback).toHaveBeenCalled();
     expect(errorCallback.mock.calls[0][0].type).toBe(ErrorType.FIELD_NOT_FOUND);
     expect(errorCallback.mock.calls[0][0].field).toBe('nonexistentField');

@@ -15,12 +15,12 @@ export interface AppError {
   originalError?: Error;
 }
 
-// 增强的验证器接口
+// Enhanced validator interface
 export interface Validator {
     type: string;
     message: string;
     validate: (value: any, data?: Record<string, any>) => boolean | Promise<boolean>;
-    // 可选的条件验证
+    // Optional conditional validation
     condition?: (data: Record<string, any>) => boolean;
 }
 
@@ -28,7 +28,7 @@ export interface ValidationError {
     field: string;
     message: string;
     rule?: string;
-    // 添加错误代码以支持国际化
+    // Add error code to support internationalization
     code?: string;
 }
 
@@ -38,17 +38,17 @@ export interface Reaction {
     action?: (data: Record<string, any>) => void;
 }
 
-// 增强的字段架构接口
+// Enhanced field schema interface
 export interface FieldSchema {
-    // 字段类型 - 增加date和enum类型
+    // Field type - added date and enum types
     type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'date' | 'enum';
-    // 验证规则
+    // Validation rules
     validator?: Validator[];
-    // 默认值
+    // Default value
     default?: any;
-    // 反应定义
+    // Reaction definition
     reaction?: Reaction | Reaction[];
-    // 值转换函数
+    // Value transformation function
     transform?: (value: any) => any;
 }
 
@@ -57,15 +57,15 @@ export interface Model {
 }
 
 export interface ModelOptions {
-    // 异步验证超时时间（毫秒）
+    // Async validation timeout in milliseconds
     asyncValidationTimeout?: number;
-    // 反应触发的防抖时间（毫秒）
+    // Debounce time for reaction triggers in milliseconds
     debounceReactions?: number;
-    // 自定义错误格式化函数
+    // Custom error formatting function
     errorFormatter?: (error: ValidationError) => string;
-    // 是否严格模式（未知字段会报错）
+    // Strict mode (unknown fields will throw errors)
     strictMode?: boolean;
-    // 错误处理器实例
+    // Error handler instance
     errorHandler?: ErrorHandler;
 }
 

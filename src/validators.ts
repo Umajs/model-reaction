@@ -1,4 +1,4 @@
-// 验证规则实现 - 独立的验证规则系统
+// Validation rule implementation - independent validation rule system
 export class Rule {
     type: string;
     message: string;
@@ -14,24 +14,24 @@ export class Rule {
         this.validate = validate;
     }
 
-    // 允许自定义错误消息
+    // Allow custom error message
     withMessage(message: string): Rule {
         return new Rule(this.type, message, this.validate);
     }
 }
 
-// 内置验证规则 - 可复用的验证逻辑
+// Built-in validation rules - reusable validation logic
 export const ValidationRules = {
-    required: new Rule('required', '该字段为必填项',
+    required: new Rule('required', 'This field is required',
         (v) => v !== undefined && v !== null && v !== ''
     ),
-    number: new Rule('number', '必须为数字',
+    number: new Rule('number', 'Must be a number',
         (v) => typeof v === 'number'
     ),
-    min: (min: number) => new Rule('min', `值必须大于等于${min}`,
+    min: (min: number) => new Rule('min', `Value must be greater than or equal to ${min}`,
         (v) => v >= min
     ),
-    email: new Rule('email', '无效的邮箱格式',
+    email: new Rule('email', 'Invalid email format',
         (v) => typeof v === 'string' && /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v)
     )
 };

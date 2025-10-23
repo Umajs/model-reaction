@@ -1,6 +1,6 @@
 import { ErrorType, AppError } from './types';
 
-// 统一错误处理类
+// Unified error handling class
 export class ErrorHandler {
     private errorListeners: Record<
         ErrorType,
@@ -15,7 +15,7 @@ export class ErrorHandler {
 
     constructor() {}
 
-    // 订阅错误
+    // Subscribe to errors
     onError(type: ErrorType, listener: (error: AppError) => void): void {
         if (!this.errorListeners[type]) {
             this.errorListeners[type] = [];
@@ -23,7 +23,7 @@ export class ErrorHandler {
         this.errorListeners[type].push(listener);
     }
 
-    // 取消订阅
+    // Unsubscribe from errors
     offError(type: ErrorType, listener: (error: AppError) => void): void {
         if (this.errorListeners[type]) {
             this.errorListeners[type] = this.errorListeners[type].filter(
@@ -32,22 +32,22 @@ export class ErrorHandler {
         }
     }
 
-    // 触发错误
+    // Trigger an error
     triggerError(error: AppError): void {
         console.error(
-            `[${error.type}] ${error.field ? `字段 ${error.field}: ` : ''}${
+            `[${error.type}] ${error.field ? `field ${error.field}: ` : ''}${
                 error.message
             }`
         );
 
-        // 触发特定类型的错误监听器
+        // Trigger specific type error listeners
         if (this.errorListeners[error.type]) {
             this.errorListeners[error.type].forEach((listener) =>
                 listener(error)
             );
         }
 
-        // 触发通用错误监听器
+        // Trigger general error listeners
         if (this.errorListeners[ErrorType.UNKNOWN]) {
             this.errorListeners[ErrorType.UNKNOWN].forEach((listener) =>
                 listener(error)
@@ -55,7 +55,7 @@ export class ErrorHandler {
         }
     }
 
-    // 创建验证错误
+    // Create validation error
     createValidationError(field: string, message: string): AppError {
         return {
             type: ErrorType.VALIDATION,
@@ -64,7 +64,7 @@ export class ErrorHandler {
         };
     }
 
-    // 创建反应错误
+    // Create reaction error
     createReactionError(field: string, error: Error): AppError {
         return {
             type: ErrorType.REACTION,
@@ -74,21 +74,21 @@ export class ErrorHandler {
         };
     }
 
-    // 创建字段未找到错误
+    // Create field not found error
     createFieldNotFoundError(field: string): AppError {
         return {
             type: ErrorType.FIELD_NOT_FOUND,
             field,
-            message: `字段 ${field} 不存在于模型架构中`,
+            message: `Field ${field} does not exist in the model schema`,
         };
     }
 
-    // 创建依赖错误
+    // Create dependency error
     createDependencyError(field: string, dependency: string): AppError {
         return {
             type: ErrorType.DEPENDENCY_ERROR,
             field,
-            message: `依赖字段 ${dependency} 未定义`,
+            message: `Dependency field ${dependency} is not defined`,
         };
     }
 }

@@ -1,12 +1,12 @@
 import { Model, ModelOptions, ModelReturn, ErrorType } from './types';
 import { ModelManager } from './model-manager';
 
-// 导出常用类型和验证规则
+// Export common types and validation rules
 export { Model, ModelOptions, ModelReturn, ErrorType };
 export { ValidationRules, Rule } from './validators';
 export { ErrorHandler } from './error-handler';
 
-// 工厂函数 - 创建模型实例
+// Factory function - create model instance
 export function createModel(schema: Model, options: ModelOptions = {}): ModelReturn {
     const modelManager = new ModelManager(schema, options);
 

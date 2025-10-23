@@ -1,7 +1,7 @@
 import { createModel, Model } from '../index';
 
 describe('ModelManager - Reaction System', () => {
-  // 异步反应测试
+  // Asynchronous reaction test
   test('should trigger reactions when dependent fields change asynchronously', async () => {
     const reactionSchema: Model = {
         firstName: { type: 'string', default: '' },
@@ -18,12 +18,12 @@ describe('ModelManager - Reaction System', () => {
     const modelManager = createModel(reactionSchema);
     await modelManager.setField('firstName', 'John');
     await modelManager.setField('lastName', 'Doe');
-    // 由于反应现在是异步的，我们需要等待一下
+    // Since reactions are now asynchronous, we need to wait a bit
     await new Promise(resolve => setTimeout(resolve, 10));
     expect(modelManager.getField('fullName')).toBe('John Doe');
   });
 
-  // 错误处理测试
+  // Error handling test
   test('should handle reaction errors asynchronously', async () => {
     const errorReactionSchema: Model = {
       input: { type: 'string', default: '' },
@@ -34,7 +34,7 @@ describe('ModelManager - Reaction System', () => {
           fields: ['input'],
           computed: (values) => {
             if (values.input === 'error') {
-              throw new Error('计算错误');
+              throw new Error('Computation error');
             }
             return values.input.toUpperCase();
           },
@@ -44,16 +44,16 @@ describe('ModelManager - Reaction System', () => {
     const modelManager = createModel(errorReactionSchema);
 
     await modelManager.setField('input', 'error');
-    // 等待反应执行
+    // Wait for reaction execution
     await new Promise(resolve => setTimeout(resolve, 10));
 
     expect(modelManager.validationErrors).toHaveProperty('__reactions');
-    expect(modelManager.validationErrors?.__reactions?.[0]?.message).toContain('计算错误');
+    expect(modelManager.validationErrors?.__reactions?.[0]?.message).toContain('Computation error');
   });
 
-  // 无效依赖字段测试
+  // Invalid dependent fields test
   test('should handle invalid dependent fields in reaction', async () => {
-    // 捕获console.error输出
+    // Capture console.error output
     console.error = jest.fn();
 
     const invalidDepsSchema: Model = {
@@ -62,7 +62,7 @@ describe('ModelManager - Reaction System', () => {
         type: 'string',
         default: '',
         reaction: {
-          fields: ['validField', 'nonexistentField'], // 依赖不存在的字段
+          fields: ['validField', 'nonexistentField'], // Depends on non-existent field
           computed: (values) => values.validField + (values.nonexistentField || ''),
         }
       }
@@ -70,9 +70,9 @@ describe('ModelManager - Reaction System', () => {
     const modelManager = createModel(invalidDepsSchema);
 
     await modelManager.setField('validField', 'test');
-    // 等待反应执行
+    // Wait for reaction execution
     await new Promise(resolve => setTimeout(resolve, 10));
 
-    expect(console.error).toHaveBeenCalledWith('[dependency_error] 字段 invalidField: 依赖字段 nonexistentField 未定义');
+    expect(console.error).toHaveBeenCalledWith('[dependency_error] field invalidField: Dependency field nonexistentField is not defined');
   });
 });

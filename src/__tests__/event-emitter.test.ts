@@ -7,7 +7,7 @@ describe('EventEmitter', () => {
     eventEmitter = new EventEmitter();
   });
 
-  // 测试事件订阅和触发
+  // Test event subscription and emission
   test('should subscribe to and emit events', () => {
     const callback = jest.fn();
 
@@ -17,7 +17,7 @@ describe('EventEmitter', () => {
     expect(callback).toHaveBeenCalledWith({ data: 'test data' });
   });
 
-  // 测试取消订阅
+  // Test unsubscription
   test('should unsubscribe from events', () => {
     const callback = jest.fn();
 
@@ -28,7 +28,7 @@ describe('EventEmitter', () => {
     expect(callback).not.toHaveBeenCalled();
   });
 
-  // 测试一次性事件
+  // Test one-time events
   test('should handle once events', () => {
     const callback = jest.fn();
 
@@ -40,7 +40,7 @@ describe('EventEmitter', () => {
     expect(callback).toHaveBeenCalledWith({ data: 'first call' });
   });
 
-  // 测试多个订阅者
+  // Test multiple subscribers
   test('should handle multiple subscribers', () => {
     const callback1 = jest.fn();
     const callback2 = jest.fn();

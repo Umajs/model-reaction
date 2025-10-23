@@ -3,11 +3,11 @@ import { validateField, deepEqual } from './utils';
 import { ErrorHandler } from './error-handler';
 import { EventEmitter } from './event-emitter';
 
-// 核心模型类 - 封装所有模型相关功能
+// Core model class - encapsulates all model-related functionality
 export class ModelManager {
     data: Record<string, any> = {};
     validationErrors: Record<string, ValidationError[]> = {};
-    dirtyData: Record<string, any> = {}; // 存储验证失败的字段及值
+    dirtyData: Record<string, any> = {}; // Stores fields with validation failures and their values
     private readonly schema: Model;
     private readonly options: ModelOptions;
     private readonly reactions: Array<{ field: string; reaction: Reaction }> = [];
@@ -19,11 +19,11 @@ export class ModelManager {
     constructor(schema: Model, options?: ModelOptions) {
         this.schema = schema;
         this.options = options || {};
-        this.asyncValidationTimeout = this.options.asyncValidationTimeout || 5000; // 默认超时时间5秒
+        this.asyncValidationTimeout = this.options.asyncValidationTimeout || 5000; // Default timeout 5 seconds
         this.errorHandler = this.options.errorHandler || new ErrorHandler();
         this.eventEmitter = new EventEmitter();
 
-        // 默认错误监听
+        // Default error listeners
         this.errorHandler.onError(ErrorType.VALIDATION, (error) => {
             this.emit('validation:error', error);
         });
@@ -32,7 +32,7 @@ export class ModelManager {
             this.emit('reaction:error', error);
         });
     
-        // 添加字段未找到错误的事件转发
+        // Add field not found error event forwarding
         this.errorHandler.onError(ErrorType.FIELD_NOT_FOUND, (error) => {
             this.emit('field:not-found', error);
         });
@@ -40,7 +40,7 @@ export class ModelManager {
         this.collectReactions();
     }
 
-    // 初始化默认值
+    // Initialize default values
     private initializeDefaults(): void {
         Object.entries(this.schema).forEach(([field, schema]) => {
             if (schema.default !== undefined) {
@@ -49,7 +49,7 @@ export class ModelManager {
         });
     }
 
-    // 收集所有反应
+    // Collect all reactions
     private collectReactions(): void {
         Object.entries(this.schema).forEach(([field, schema]) => {
             if (schema.reaction) {
@@ -61,22 +61,22 @@ export class ModelManager {
         });
     }
 
-    // 订阅事件
+    // Subscribe to events
     on(event: string, callback: (data: any) => void): void {
         this.eventEmitter.on(event, callback);
     }
 
-    // 取消订阅事件
+    // Unsubscribe from events
     off(event: string, callback?: (data: any) => void): void {
         this.eventEmitter.off(event, callback);
     }
 
-    // 触发事件
+    // Trigger event
     private emit(event: string, data: any): void {
         this.eventEmitter.emit(event, data);
     }
 
-    // 更新：设置字段值（异步）
+    // Update: Set field value (async)
     async setField(field: string, value: any): Promise<boolean> {
         const schema = this.schema[field];
         if (!schema) {
@@ -85,41 +85,41 @@ export class ModelManager {
             return false;
         }
 
-        // 清除之前的错误
+        // Clear previous errors
         this.validationErrors[field] = [];
 
-        // 应用转换
+        // Apply transformation
         let transformedValue = value;
         if (schema.transform) {
             transformedValue = schema.transform(value);
         }
 
-        // 立即验证该字段
+        // Validate the field immediately
         const isValid = await this.validateSingleField(schema, transformedValue, field);
 
-        // 处理验证结果
+        // Process validation result
         if (isValid) {
             this.handleValidField(field, transformedValue);
         } else {
             this.handleInvalidField(field, transformedValue);
         }
 
-        // 返回验证结果
+        // Return validation result
         return isValid;
     }
 
-    // 验证单个字段
+    // Validate single field
     private async validateSingleField(schema: FieldSchema, value: any, field: string): Promise<boolean> {
         return validateField(schema, value, this.validationErrors, field, this.asyncValidationTimeout, this.errorHandler);
     }
 
-    // 处理有效字段值
+    // Handle valid field value
     private handleValidField(field: string, value: any): void {
-        // 如果值没有变化，不触发反应
+        // If value hasn't changed, don't trigger reactions
         const valueChanged = !deepEqual(this.data[field], value);
         if (valueChanged) {
             this.data[field] = value;
-            // 从dirtyData中移除（如果存在）
+            // Remove from dirtyData if exists
             if (this.dirtyData[field] !== undefined) {
                 delete this.dirtyData[field];
             }
@@ -128,17 +128,17 @@ export class ModelManager {
         }
     }
 
-    // 处理无效字段值
+    // Handle invalid field value
     private handleInvalidField(field: string, value: any): void {
-        // 验证失败，保存到dirtyData
+        // Validation failed, save to dirtyData
         this.dirtyData[field] = value;
     }
 
-    // 更新：批量更新字段（异步）
+    // Update: Batch update fields (async)
     async setFields(fields: Record<string, any>): Promise<boolean> {
         let allValid = true;
         
-        // 先验证并更新每个字段
+        // First validate and update each field
         const validationPromises = Object.entries(fields).map(async ([field, value]) => {
             const isValid = await this.setField(field, value);
             if (!isValid) {
@@ -146,33 +146,33 @@ export class ModelManager {
             }
         });
 
-        // 等待所有验证完成
+        // Wait for all validations to complete
         await Promise.all(validationPromises);
 
         return allValid;
     }
 
-    // 获取字段值
+    // Get field value
     getField(field: string): any {
         return this.data[field];
     }
 
-    // 获取dirty数据
+    // Get dirty data
     getDirtyData(): Record<string, any> {
         return { ...this.dirtyData };
     }
 
-    // 清除dirty数据
+    // Clear dirty data
     clearDirtyData(): void {
         this.dirtyData = {};
     }
 
-    // 触发相关反应
+    // Trigger related reactions
     private triggerReactions(changedField: string): void {
         const debounceTime = this.options.debounceReactions || 0;
         const affectedReactions = this.collectAffectedReactions(changedField);
         
-        // 触发反应，确保每个字段只触发一次
+        // Trigger reactions, ensuring each field is triggered only once
         affectedReactions.forEach(field => {
             const reaction = this.reactions.find(r => r.field === field)?.reaction;
             if (reaction) {
@@ -181,7 +181,7 @@ export class ModelManager {
         });
     }
 
-    // 收集受影响的反应
+    // Collect affected reactions
     private collectAffectedReactions(changedField: string): Set<string> {
         const affectedReactions = new Set<string>();
         
@@ -194,7 +194,7 @@ export class ModelManager {
         return affectedReactions;
     }
 
-    // 安排反应执行（考虑防抖）
+    // Schedule reaction execution (considering debouncing)
     private scheduleReaction(field: string, reaction: Reaction, debounceTime: number): void {
         if (this.reactionTimeouts[field]) {
             clearTimeout(this.reactionTimeouts[field]);
@@ -209,7 +209,7 @@ export class ModelManager {
         }
     }
 
-    // 处理单个反应
+    // Process single reaction
     private processReaction(field: string, reaction: Reaction): void {
         try {
             const dependentValues = reaction.fields.reduce((values, f) => {
@@ -221,7 +221,7 @@ export class ModelManager {
                 return { ...values, [f]: this.data[f] };
             }, {} as Record<string, any>);
 
-            // 计算新值
+            // Calculate new value
             try {
                 const computedValue = reaction.computed(dependentValues);
                 this.setField(field, computedValue);
@@ -250,11 +250,11 @@ export class ModelManager {
         });
     }
 
-    // 更新：整体验证（异步）
+    // Update: Validate all fields (async)
     async validateAll(): Promise<boolean> {
         let allValid = true;
 
-        // 验证所有字段
+        // Validate all fields
         const validationPromises = Object.keys(this.schema).map(async (field) => {
             const isValid = await this.validateAndUpdateField(field);
             if (!isValid) {
@@ -264,30 +264,30 @@ export class ModelManager {
 
         await Promise.all(validationPromises);
 
-        // 触发验证完成事件
+        // Trigger validation complete event
         this.emit('validation:complete', { isValid: allValid });
 
-        // 检查是否有错误
+        // Check if there are any errors
         return allValid;
     }
 
-    // 验证并更新单个字段
+    // Validate and update single field
     private async validateAndUpdateField(field: string): Promise<boolean> {
         const schema = this.schema[field] as FieldSchema;
-        // 优先使用 dirtyData 中的值，如果没有则使用 data 中的值
+        // Prefer value from dirtyData, if not available use value from data
         const value = this.dirtyData[field] !== undefined ? this.dirtyData[field] : this.data[field];
         this.validationErrors[field] = [];
         const isValid = await validateField(schema, value, this.validationErrors, field, this.asyncValidationTimeout, this.errorHandler);
         
         if (!isValid) {
-            // 验证失败，确保值在 dirtyData 中
+            // Validation failed, ensure value is in dirtyData
             this.dirtyData[field] = value;
         } else {
-            // 验证通过，从 dirtyData 中移除
+            // Validation passed, remove from dirtyData
             if (this.dirtyData[field] !== undefined) {
                 delete this.dirtyData[field];
             }
-            // 更新 data 中的值
+            // Update value in data
             if (!deepEqual(this.data[field], value)) {
                 this.data[field] = value;
                 this.emit('field:change', { field, value });
@@ -298,10 +298,10 @@ export class ModelManager {
         return isValid;
     }
 
-    // 获取验证摘要
+    // Get validation summary
     getValidationSummary(): string {
         const errors = Object.values(this.validationErrors).flat();
-        if (errors.length === 0) return '验证通过';
+        if (errors.length === 0) return 'Validation passed';
 
         if (this.options.errorFormatter) {
             return errors.map(this.options.errorFormatter).join('; ');
@@ -310,7 +310,7 @@ export class ModelManager {
         return errors.map(err => `${err.field}: ${err.message}`).join('; ');
     }
 
-    // 获取错误处理器 - 允许外部订阅错误
+    // Get error handler - allows external error subscription
     getErrorHandler(): ErrorHandler {
         return this.errorHandler;
     }
