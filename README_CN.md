@@ -37,17 +37,17 @@ const userModel = createModel({
   name: {
     type: 'string',
     validator: [
-      ValidationRules.required.withMessage('姓名不能为空'),
-      // ValidationRules.minLength(2).withMessage('姓名长度不能少于2个字符')
+      ValidationRules.required,
+      // ValidationRules.minLength(2)
     ],
     default: '',
   },
   age: {
     type: 'number',
     validator: [
-      ValidationRules.required.withMessage('年龄不能为空'),
-      ValidationRules.number.withMessage('年龄必须是数字'),
-      ValidationRules.min(18).withMessage('年龄必须大于等于18岁')
+      ValidationRules.required,
+      ValidationRules.number,
+      ValidationRules.min(18)
     ],
     default: 18
   },

@@ -37,17 +37,17 @@ const userModel = createModel({
   name: {
     type: 'string',
     validator: [
-      ValidationRules.required.withMessage('Name cannot be empty'),
-      // ValidationRules.minLength(2).withMessage('Name length cannot be less than 2 characters')
+      ValidationRules.required,
+      // ValidationRules.minLength(2)
     ],
     default: '',
   },
   age: {
     type: 'number',
     validator: [
-      ValidationRules.required.withMessage('Age cannot be empty'),
-      ValidationRules.number.withMessage('Age must be a number'),
-      ValidationRules.min(18).withMessage('Age must be greater than or equal to 18')
+      ValidationRules.required,
+      ValidationRules.number,
+      ValidationRules.min(18)
     ],
     default: 18
   },
