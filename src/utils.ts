@@ -1,4 +1,4 @@
-import { FieldSchema, ValidationError, ErrorType } from './types';
+import { FieldSchema, ValidationError } from './types';
 import { ErrorHandler } from './error-handler';
 
 // Unified validation function - supports both synchronous and asynchronous validation

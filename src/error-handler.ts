@@ -34,6 +34,7 @@ export class ErrorHandler {
 
     // Trigger an error
     triggerError(error: AppError): void {
+        /* eslint-disable no-console */
         console.error(
             `[${error.type}] ${error.field ? `field ${error.field}: ` : ''}${
                 error.message
