@@ -1,6 +1,14 @@
 import { createModel, Model, ValidationRules } from '../index';
 
 describe('ModelManager - Boundary Cases', () => {
+    beforeEach(() => {
+        jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
     // Boundary cases test
     test('should handle null and undefined values correctly', async () => {
         const nullableSchema: Model = {

@@ -5,6 +5,11 @@ describe('ErrorHandler', () => {
 
     beforeEach(() => {
         errorHandler = new ErrorHandler();
+        jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
     });
 
     // Test error subscription and triggering

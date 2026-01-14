@@ -40,6 +40,11 @@ describe('ModelManager - Validation', () => {
 
     beforeEach(() => {
         modelManager = createModel(testSchema, { asyncValidationTimeout: 5000 });
+        jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
     });
 
     // Asynchronous validation failure test

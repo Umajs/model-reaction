@@ -1,6 +1,15 @@
 import { createModel, Model } from '../index';
 
 describe('ModelManager - Reaction System', () => {
+    beforeEach(() => {
+        jest.spyOn(console, 'error').mockImplementation(() => {});
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
     // Asynchronous reaction test
     test('should trigger reactions when dependent fields change asynchronously', async () => {
         const reactionSchema: Model = {
@@ -55,8 +64,7 @@ describe('ModelManager - Reaction System', () => {
 
     // Invalid dependent fields test
     test('should handle invalid dependent fields in reaction', async () => {
-        // Capture console.error output
-        console.error = jest.fn();
+        const consoleSpy = jest.spyOn(console, 'error');
 
         const invalidDepsSchema: Model = {
             validField: { type: 'string', default: 'valid' },
@@ -75,8 +83,43 @@ describe('ModelManager - Reaction System', () => {
         // Wait for reaction execution
         await new Promise((resolve) => setTimeout(resolve, 10));
 
-        expect(console.error).toHaveBeenCalledWith(
-            '[dependency_error] field invalidField: Dependency field nonexistentField is not defined'
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining('[dependency_error] field invalidField: Dependency field nonexistentField is not defined')
+        );
+    });
+
+    // Circular dependency test
+    test('should handle circular dependencies in reaction', async () => {
+        const consoleSpy = jest.spyOn(console, 'warn');
+        
+        const circularSchema: Model = {
+            fieldA: {
+                type: 'number',
+                default: 0,
+                reaction: {
+                    fields: ['fieldB'],
+                    computed: (values) => values.fieldB + 1,
+                },
+            },
+            fieldB: {
+                type: 'number',
+                default: 0,
+                reaction: {
+                    fields: ['fieldA'],
+                    computed: (values) => values.fieldA + 1,
+                },
+            },
+        };
+
+        const modelManager = createModel(circularSchema);
+
+        await modelManager.setField('fieldA', 1);
+        
+        // Wait for reactions
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Circular dependency detected')
         );
     });
 });

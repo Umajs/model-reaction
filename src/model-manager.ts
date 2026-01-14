@@ -77,7 +77,7 @@ export class ModelManager {
     }
 
     // Update: Set field value (async)
-    async setField(field: string, value: any): Promise<boolean> {
+    async setField(field: string, value: any, options: { reactionStack?: string[] } = {}): Promise<boolean> {
         const schema = this.schema[field];
         if (!schema) {
             const error = this.errorHandler.createFieldNotFoundError(field);
@@ -99,7 +99,7 @@ export class ModelManager {
 
         // Process validation result
         if (isValid) {
-            this.handleValidField(field, transformedValue);
+            this.handleValidField(field, transformedValue, options.reactionStack);
         } else {
             this.handleInvalidField(field, transformedValue);
         }
@@ -114,7 +114,7 @@ export class ModelManager {
     }
 
     // Handle valid field value
-    private handleValidField(field: string, value: any): void {
+    private handleValidField(field: string, value: any, reactionStack: string[] = []): void {
         // If value hasn't changed, don't trigger reactions
         const valueChanged = !deepEqual(this.data[field], value);
         if (valueChanged) {
@@ -124,7 +124,7 @@ export class ModelManager {
                 delete this.dirtyData[field];
             }
             this.emit('field:change', { field, value });
-            this.triggerReactions(field);
+            this.triggerReactions(field, reactionStack);
         }
     }
 
@@ -168,15 +168,23 @@ export class ModelManager {
     }
 
     // Trigger related reactions
-    private triggerReactions(changedField: string): void {
+    private triggerReactions(changedField: string, reactionStack: string[] = []): void {
         const debounceTime = this.options.debounceReactions || 0;
         const affectedReactions = this.collectAffectedReactions(changedField);
         
         // Trigger reactions, ensuring each field is triggered only once
         affectedReactions.forEach(field => {
+            // Check for circular dependency
+            if (reactionStack.includes(field)) {
+                // Circular dependency detected, skip this reaction
+                // Log warning or trigger error
+                console.warn(`Circular dependency detected: ${reactionStack.join(' -> ')} -> ${field}`);
+                return;
+            }
+
             const reaction = this.reactions.find(r => r.field === field)?.reaction;
             if (reaction) {
-                this.scheduleReaction(field, reaction, debounceTime);
+                this.scheduleReaction(field, reaction, debounceTime, [...reactionStack, changedField]);
             }
         });
     }
@@ -195,22 +203,22 @@ export class ModelManager {
     }
 
     // Schedule reaction execution (considering debouncing)
-    private scheduleReaction(field: string, reaction: Reaction, debounceTime: number): void {
+    private scheduleReaction(field: string, reaction: Reaction, debounceTime: number, reactionStack: string[] = []): void {
         if (this.reactionTimeouts[field]) {
             clearTimeout(this.reactionTimeouts[field]);
         }
 
         if (debounceTime > 0) {
             this.reactionTimeouts[field] = setTimeout(() => {
-                this.processReaction(field, reaction);
+                this.processReaction(field, reaction, reactionStack);
             }, debounceTime);
         } else {
-            this.processReaction(field, reaction);
+            this.processReaction(field, reaction, reactionStack);
         }
     }
 
     // Process single reaction
-    private processReaction(field: string, reaction: Reaction): void {
+    private processReaction(field: string, reaction: Reaction, reactionStack: string[] = []): void {
         try {
             const dependentValues = reaction.fields.reduce((values, f) => {
                 if (this.data[f] === undefined) {
@@ -224,7 +232,7 @@ export class ModelManager {
             // Calculate new value
             try {
                 const computedValue = reaction.computed(dependentValues);
-                this.setField(field, computedValue);
+                this.setField(field, computedValue, { reactionStack });
                 if (reaction.action) {
                     reaction.action({ ...dependentValues, computed: computedValue });
                 }

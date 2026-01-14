@@ -23,6 +23,11 @@ describe('ModelManager - Batch Operations', () => {
 
     beforeEach(() => {
         modelManager = createModel(testSchema, { asyncValidationTimeout: 5000 });
+        jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
     });
 
     // Batch field update test

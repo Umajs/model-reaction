@@ -38,6 +38,11 @@ describe('ModelManager - Custom Validation Messages', () => {
 
     beforeEach(() => {
         modelManager = createModel(testSchema);
+        jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
     });
 
     // Test custom required message

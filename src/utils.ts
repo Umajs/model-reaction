@@ -85,7 +85,12 @@ export function deepEqual(a: any, b: any): boolean {
     }
 
     // Handle arrays
-    if (Array.isArray(a) && Array.isArray(b)) {
+    const isArrayA = Array.isArray(a);
+    const isArrayB = Array.isArray(b);
+
+    if (isArrayA !== isArrayB) return false;
+
+    if (isArrayA && isArrayB) {
         if (a.length !== b.length) return false;
         for (let i = 0; i < a.length; i++) {
             if (!deepEqual(a[i], b[i])) return false;
