@@ -56,6 +56,9 @@ async function runExample() {
   await productModel.setField('discount', 20);
   await new Promise(resolve => setTimeout(resolve, 200));
   console.log('最终支付金额:', productModel.getField('finalTotal'));
+
+  // 清理资源
+  productModel.dispose();
 }
 
 runExample();

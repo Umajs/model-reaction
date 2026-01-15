@@ -47,6 +47,9 @@ async function runExample() {
 
   // 验证表单
   await formModel.validateAll();
+
+  // 清理资源
+  formModel.dispose();
 }
 
 runExample();

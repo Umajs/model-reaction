@@ -224,6 +224,9 @@ async function runExample() {
   } else {
     console.log('验证错误摘要:', orderFormModel.getValidationSummary());
   }
+
+  // 清理资源
+  orderFormModel.dispose();
 }
 
 runExample();

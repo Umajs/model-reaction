@@ -72,6 +72,9 @@ async function runExample() {
   const result4 = await userModel.setField('email', 'existing@example.com');
   console.log('设置已注册邮箱结果:', result4);
   console.log('邮箱错误:', userModel.validationErrors.email);
+
+  // 清理资源
+  userModel.dispose();
 }
 
 runExample();

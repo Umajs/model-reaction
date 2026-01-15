@@ -47,6 +47,9 @@ async function runExample() {
 
   // 查看脏数据
   console.log('脏数据:', userModel.getDirtyData());
+
+  // 清理资源
+  userModel.dispose();
 }
 
 runExample();
