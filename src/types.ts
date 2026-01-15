@@ -81,4 +81,5 @@ export interface ModelReturn {
     off: (event: string, callback?: (...args: any[]) => void) => void;
     getDirtyData: () => Record<string, any>;
     clearDirtyData: () => void;
+    dispose: () => void;
 }

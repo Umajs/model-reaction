@@ -1,4 +1,4 @@
-import { FieldSchema, ValidationError } from './types';
+import { FieldSchema, ValidationError, Validator } from './types';
 import { ErrorHandler } from './error-handler';
 
 // Unified validation function - supports both synchronous and asynchronous validation
@@ -15,63 +15,86 @@ export async function validateField(
 
     // Collect all validation promises
     const validationPromises = schema.validator.map(validator => {
-        // Wrap synchronous validation as promise
-        let validationPromise: Promise<boolean>;
+        // Handle synchronous validation
         if (validator.validate) {
             const result = validator.validate(value);
+            
+            // Check if result is a promise
             if (result instanceof Promise) {
-                validationPromise = result;
-            } else {
-                validationPromise = Promise.resolve(result);
-            }
-        } else {
-            validationPromise = Promise.resolve(true);
-        }
-
-        // Add timeout handling
-        let timeoutId: number;
-        const timeoutPromise = new Promise<boolean>((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error(`Validation timeout: ${field}`)), timeout) as unknown as number;
-        });
-
-        return Promise.race([validationPromise, timeoutPromise])
-            .then(result => {
-                clearTimeout(timeoutId); // Clear timeout after validation completes
-                if (!result) {
-                    errors[field] = errors[field] || [];
-                    errors[field].push({
-                        field,
-                        rule: validator.type,
-                        message: validator.message
-                    });
-                    isValid = false;
-                    // Trigger validation error
-                    const error = errorHandler.createValidationError(field, validator.message);
-                    errorHandler.triggerError(error);
-                }
-                return result;
-            })
-            .catch(error => {
-                clearTimeout(timeoutId); // Clear timeout after validation fails
-                errors[field] = errors[field] || [];
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                errors[field].push({
-                    field,
-                    rule: 'validation_error',
-                    message: `Validation failed: ${errorMessage}`
+                // Async validation with timeout
+                let timeoutId: number;
+                const timeoutPromise = new Promise<boolean>((_, reject) => {
+                    timeoutId = setTimeout(() => reject(new Error(`Validation timeout: ${field}`)), timeout) as unknown as number;
                 });
-                isValid = false;
-                // Trigger validation error
-                const appError = errorHandler.createValidationError(field, `Validation failed: ${errorMessage}`);
-                errorHandler.triggerError(appError);
-                return false;
-            });
+
+                return Promise.race([result, timeoutPromise])
+                    .then(res => {
+                        clearTimeout(timeoutId);
+                        if (!res) {
+                            handleValidationError(field, validator, validator.message, errors, errorHandler);
+                            isValid = false;
+                        }
+                        return res;
+                    })
+                    .catch(error => {
+                        clearTimeout(timeoutId);
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        handleExceptionError(field, errorMessage, errors, errorHandler);
+                        isValid = false;
+                        return false;
+                    });
+            } else {
+                // Synchronous validation - no timeout needed
+                if (!result) {
+                    handleValidationError(field, validator, validator.message, errors, errorHandler);
+                    isValid = false;
+                }
+                return Promise.resolve(result);
+            }
+        }
+        
+        return Promise.resolve(true);
     });
 
     // Wait for all validations to complete
     await Promise.all(validationPromises);
 
     return isValid;
+}
+
+function handleValidationError(
+    field: string, 
+    validator: Validator, 
+    message: string, 
+    errors: Record<string, ValidationError[]>, 
+    errorHandler: ErrorHandler
+) {
+    errors[field] = errors[field] || [];
+    errors[field].push({
+        field,
+        rule: validator.type,
+        message: message
+    });
+    // Trigger validation error
+    const error = errorHandler.createValidationError(field, message);
+    errorHandler.triggerError(error);
+}
+
+function handleExceptionError(
+    field: string, 
+    message: string, 
+    errors: Record<string, ValidationError[]>, 
+    errorHandler: ErrorHandler
+) {
+    errors[field] = errors[field] || [];
+    errors[field].push({
+        field,
+        rule: 'validation_error',
+        message: `Validation failed: ${message}`
+    });
+    // Trigger validation error
+    const appError = errorHandler.createValidationError(field, `Validation failed: ${message}`);
+    errorHandler.triggerError(appError);
 }
 
 // Deep comparison of two values for equality

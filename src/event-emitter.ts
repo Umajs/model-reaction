@@ -38,4 +38,9 @@ export class EventEmitter {
         };
         this.on(event, wrapper);
     }
+
+    // Clear all events
+    clear(): void {
+        this.events = {};
+    }
 }

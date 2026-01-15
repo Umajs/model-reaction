@@ -10,8 +10,10 @@ export class ModelManager {
     dirtyData: Record<string, any> = {}; // Stores fields with validation failures and their values
     private readonly schema: Model;
     private readonly options: ModelOptions;
-    private readonly reactions: Array<{ field: string; reaction: Reaction }> = [];
-    private readonly reactionTimeouts: Record<string, number> = {};
+    // Optimization: Map dependency field -> List of reactions that depend on it
+    private readonly reactionDeps: Map<string, Array<{ field: string; reaction: Reaction }>> = new Map();
+    // Optimization: Map reaction -> timeout ID for debouncing
+    private readonly reactionTimeouts: Map<Reaction, any> = new Map();
     private readonly eventEmitter: EventEmitter;
     private readonly errorHandler: ErrorHandler;
     private asyncValidationTimeout: number;
@@ -49,13 +51,18 @@ export class ModelManager {
         });
     }
 
-    // Collect all reactions
+    // Collect all reactions and build dependency graph
     private collectReactions(): void {
         Object.entries(this.schema).forEach(([field, schema]) => {
             if (schema.reaction) {
                 const reactions = Array.isArray(schema.reaction) ? schema.reaction : [schema.reaction];
                 reactions.forEach(reaction => {
-                    this.reactions.push({ field, reaction });
+                    reaction.fields.forEach(depField => {
+                        if (!this.reactionDeps.has(depField)) {
+                            this.reactionDeps.set(depField, []);
+                        }
+                        this.reactionDeps.get(depField)!.push({ field, reaction });
+                    });
                 });
             }
         });
@@ -170,10 +177,12 @@ export class ModelManager {
     // Trigger related reactions
     private triggerReactions(changedField: string, reactionStack: string[] = []): void {
         const debounceTime = this.options.debounceReactions || 0;
-        const affectedReactions = this.collectAffectedReactions(changedField);
+        const reactionsToTrigger = this.reactionDeps.get(changedField);
         
-        // Trigger reactions, ensuring each field is triggered only once
-        affectedReactions.forEach(field => {
+        if (!reactionsToTrigger) return;
+
+        // Trigger reactions
+        reactionsToTrigger.forEach(({ field, reaction }) => {
             // Check for circular dependency
             if (reactionStack.includes(field)) {
                 // Circular dependency detected, skip this reaction
@@ -182,36 +191,22 @@ export class ModelManager {
                 return;
             }
 
-            const reaction = this.reactions.find(r => r.field === field)?.reaction;
-            if (reaction) {
-                this.scheduleReaction(field, reaction, debounceTime, [...reactionStack, changedField]);
-            }
+            this.scheduleReaction(field, reaction, debounceTime, [...reactionStack, changedField]);
         });
-    }
-
-    // Collect affected reactions
-    private collectAffectedReactions(changedField: string): Set<string> {
-        const affectedReactions = new Set<string>();
-        
-        this.reactions.forEach(({ field, reaction }) => {
-            if (reaction.fields.includes(changedField)) {
-                affectedReactions.add(field);
-            }
-        });
-        
-        return affectedReactions;
     }
 
     // Schedule reaction execution (considering debouncing)
     private scheduleReaction(field: string, reaction: Reaction, debounceTime: number, reactionStack: string[] = []): void {
-        if (this.reactionTimeouts[field]) {
-            clearTimeout(this.reactionTimeouts[field]);
+        if (this.reactionTimeouts.has(reaction)) {
+            clearTimeout(this.reactionTimeouts.get(reaction));
         }
 
         if (debounceTime > 0) {
-            this.reactionTimeouts[field] = setTimeout(() => {
+            const timeoutId = setTimeout(() => {
+                this.reactionTimeouts.delete(reaction);
                 this.processReaction(field, reaction, reactionStack);
             }, debounceTime);
+            this.reactionTimeouts.set(reaction, timeoutId);
         } else {
             this.processReaction(field, reaction, reactionStack);
         }
@@ -321,5 +316,23 @@ export class ModelManager {
     // Get error handler - allows external error subscription
     getErrorHandler(): ErrorHandler {
         return this.errorHandler;
+    }
+
+    // Clean up resources
+    dispose(): void {
+        // Clear all reaction timeouts
+        this.reactionTimeouts.forEach((timeoutId) => {
+            clearTimeout(timeoutId);
+        });
+        this.reactionTimeouts.clear();
+        
+        // Clear all event listeners
+        this.eventEmitter.clear();
+        
+        // Clear data and errors
+        this.data = {};
+        this.dirtyData = {};
+        this.validationErrors = {};
+        this.reactionDeps.clear();
     }
 }

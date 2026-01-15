@@ -22,5 +22,6 @@ export function createModel(schema: Model, options: ModelOptions = {}): ModelRet
         off: (event, callback) => modelManager.off(event, callback),
         getDirtyData: () => modelManager.getDirtyData(),
         clearDirtyData: () => modelManager.clearDirtyData(),
+        dispose: () => modelManager.dispose(),
     };
 }
