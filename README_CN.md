@@ -178,7 +178,8 @@ createModel(schema: Model, options?: ModelOptions);
 - `clearDirtyData(): void`: 清除所有脏数据
 - `on(event: string, callback: (data: any) => void): void`: 订阅事件
 - `off(event: string, callback?: (data: any) => void): void`: 取消订阅事件
-- `emit(event: string, data: any): void`: 触发事件
+- `get data(): Record<string, any>`: 获取所有字段值
+- `get validationErrors(): Record<string, ValidationError[]>`: 获取所有验证错误
 
 #### 事件
 

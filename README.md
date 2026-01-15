@@ -178,7 +178,8 @@ createModel(schema: Model, options?: ModelOptions);
 - `clearDirtyData(): void`: Clear all dirty data
 - `on(event: string, callback: (data: any) => void): void`: Subscribe to events
 - `off(event: string, callback?: (data: any) => void): void`: Unsubscribe from events
-- `emit(event: string, data: any): void`: Trigger events
+- `get data(): Record<string, any>`: Get all field values
+- `get validationErrors(): Record<string, ValidationError[]>`: Get all validation errors
 
 #### Events
 
