@@ -91,6 +91,7 @@ describe('ModelManager - Validation', () => {
 
     // Asynchronous validation timeout test
     test('should handle async validation timeout', async () => {
+        let timeoutId: any;
         // Create a validator that will timeout
         const timeoutSchema: Model = {
             slowField: {
@@ -98,7 +99,7 @@ describe('ModelManager - Validation', () => {
                 validator: [
                     new Rule('asyncTimeout', 'Validation timeout', async () => {
                         return new Promise<boolean>((resolve) => {
-                            setTimeout(() => resolve(false), 10000);
+                            timeoutId = setTimeout(() => resolve(false), 10000);
                         });
                     }),
                 ],
@@ -111,6 +112,10 @@ describe('ModelManager - Validation', () => {
         expect(timeoutModel.getValidationSummary()).toContain(
             'slowField: Validation failed: Validation timeout'
         );
+        
+        // Clean up timeout
+        clearTimeout(timeoutId);
+        timeoutModel.dispose();
     });
 
     // Invalid batch update test
