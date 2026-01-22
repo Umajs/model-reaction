@@ -10,6 +10,7 @@ export class ErrorHandler {
         [ErrorType.REACTION]: [],
         [ErrorType.FIELD_NOT_FOUND]: [],
         [ErrorType.DEPENDENCY_ERROR]: [],
+        [ErrorType.CIRCULAR_DEPENDENCY]: [],
         [ErrorType.UNKNOWN]: [],
     };
 
@@ -90,6 +91,15 @@ export class ErrorHandler {
             type: ErrorType.DEPENDENCY_ERROR,
             field,
             message: `Dependency field ${dependency} is not defined`,
+        };
+    }
+
+    // Create circular dependency error
+    createCircularDependencyError(path: string, field: string): AppError {
+        return {
+            type: ErrorType.CIRCULAR_DEPENDENCY,
+            field,
+            message: `Circular dependency detected: ${path} -> ${field}`,
         };
     }
 }

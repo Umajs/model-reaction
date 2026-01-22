@@ -90,7 +90,7 @@ describe('ModelManager - Reaction System', () => {
 
     // Circular dependency test
     test('should handle circular dependencies in reaction', async () => {
-        const consoleSpy = jest.spyOn(console, 'warn');
+        const consoleSpy = jest.spyOn(console, 'error');
         
         const circularSchema: Model = {
             fieldA: {
@@ -118,6 +118,9 @@ describe('ModelManager - Reaction System', () => {
         // Wait for reactions
         await new Promise((resolve) => setTimeout(resolve, 10));
 
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining('[circular_dependency]')
+        );
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('Circular dependency detected')
         );

@@ -5,6 +5,7 @@ export enum ErrorType {
   REACTION = 'reaction',
   FIELD_NOT_FOUND = 'field_not_found',
   DEPENDENCY_ERROR = 'dependency_error',
+  CIRCULAR_DEPENDENCY = 'circular_dependency',
   UNKNOWN = 'unknown',
 }
 
@@ -69,17 +70,17 @@ export interface ModelOptions {
     errorHandler?: ErrorHandler;
 }
 
-export interface ModelReturn {
-    data: Record<string, any>;
+export interface ModelReturn<T = Record<string, any>> {
+    data: T;
     validationErrors: Record<string, ValidationError[]>;
-    setField: (field: string, value: any) => Promise<boolean>;
-    getField: (field: string) => any;
-    setFields: (fields: Record<string, any>) => Promise<boolean>;
+    setField: <K extends keyof T>(field: K, value: T[K]) => Promise<boolean>;
+    getField: <K extends keyof T>(field: K) => T[K];
+    setFields: (fields: Partial<T>) => Promise<boolean>;
     validateAll: () => Promise<boolean>;
     getValidationSummary: () => string;
     on: (event: string, callback: (...args: any[]) => void) => void;
     off: (event: string, callback?: (...args: any[]) => void) => void;
-    getDirtyData: () => Record<string, any>;
+    getDirtyData: () => Partial<T>;
     clearDirtyData: () => void;
     dispose: () => void;
 }

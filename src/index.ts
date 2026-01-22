@@ -7,8 +7,8 @@ export { ValidationRules, Rule } from './validators';
 export { ErrorHandler } from './error-handler';
 
 // Factory function - create model instance
-export function createModel(schema: Model, options: ModelOptions = {}): ModelReturn {
-    const modelManager = new ModelManager(schema, options);
+export function createModel<T extends Record<string, any> = Record<string, any>>(schema: Model, options: ModelOptions = {}): ModelReturn<T> {
+    const modelManager = new ModelManager<T>(schema, options);
 
     return {
         get data() { return { ...modelManager.data }; },

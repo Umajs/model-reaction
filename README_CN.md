@@ -176,6 +176,7 @@ createModel(schema: Model, options?: ModelOptions);
 - `getValidationSummary(): string`: 获取验证摘要信息
 - `getDirtyData(): Record<string, any>`: 获取验证失败的脏数据
 - `clearDirtyData(): void`: 清除所有脏数据
+- `dispose(): void`: 销毁模型，清除所有定时器和监听器
 - `on(event: string, callback: (data: any) => void): void`: 订阅事件
 - `off(event: string, callback?: (data: any) => void): void`: 取消订阅事件
 - `get data(): Record<string, any>`: 获取所有字段值

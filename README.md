@@ -176,6 +176,7 @@ createModel(schema: Model, options?: ModelOptions);
 - `getValidationSummary(): string`: Get validation summary information
 - `getDirtyData(): Record<string, any>`: Get validation-failed dirty data
 - `clearDirtyData(): void`: Clear all dirty data
+- `dispose(): void`: Dispose the model, clear all timers and listeners
 - `on(event: string, callback: (data: any) => void): void`: Subscribe to events
 - `off(event: string, callback?: (data: any) => void): void`: Unsubscribe from events
 - `get data(): Record<string, any>`: Get all field values

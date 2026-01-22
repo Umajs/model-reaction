@@ -4,10 +4,10 @@ import { ErrorHandler } from './error-handler';
 import { EventEmitter } from './event-emitter';
 
 // Core model class - encapsulates all model-related functionality
-export class ModelManager {
-    data: Record<string, any> = {};
+export class ModelManager<T extends Record<string, any> = Record<string, any>> {
+    data: T = {} as T;
     validationErrors: Record<string, ValidationError[]> = {};
-    dirtyData: Record<string, any> = {}; // Stores fields with validation failures and their values
+    dirtyData: Partial<T> = {}; // Stores fields with validation failures and their values
     private readonly schema: Model;
     private readonly options: ModelOptions;
     // Optimization: Map dependency field -> List of reactions that depend on it
@@ -33,6 +33,10 @@ export class ModelManager {
         this.errorHandler.onError(ErrorType.REACTION, (error) => {
             this.emit('reaction:error', error);
         });
+
+        this.errorHandler.onError(ErrorType.CIRCULAR_DEPENDENCY, (error) => {
+            this.emit('reaction:error', error);
+        });
     
         // Add field not found error event forwarding
         this.errorHandler.onError(ErrorType.FIELD_NOT_FOUND, (error) => {
@@ -46,7 +50,7 @@ export class ModelManager {
     private initializeDefaults(): void {
         Object.entries(this.schema).forEach(([field, schema]) => {
             if (schema.default !== undefined) {
-                this.data[field] = schema.default;
+                (this.data as any)[field] = schema.default;
             }
         });
     }
@@ -84,16 +88,16 @@ export class ModelManager {
     }
 
     // Update: Set field value (async)
-    async setField(field: string, value: any, options: { reactionStack?: string[] } = {}): Promise<boolean> {
-        const schema = this.schema[field];
+    async setField<K extends keyof T>(field: K, value: T[K], options: { reactionStack?: string[] } = {}): Promise<boolean> {
+        const schema = this.schema[field as string];
         if (!schema) {
-            const error = this.errorHandler.createFieldNotFoundError(field);
+            const error = this.errorHandler.createFieldNotFoundError(field as string);
             this.errorHandler.triggerError(error);
             return false;
         }
 
         // Clear previous errors
-        this.validationErrors[field] = [];
+        this.validationErrors[field as string] = [];
 
         // Apply transformation
         let transformedValue = value;
@@ -102,13 +106,13 @@ export class ModelManager {
         }
 
         // Validate the field immediately
-        const isValid = await this.validateSingleField(schema, transformedValue, field);
+        const isValid = await this.validateSingleField(schema, transformedValue, field as string);
 
         // Process validation result
         if (isValid) {
             this.handleValidField(field, transformedValue, options.reactionStack);
         } else {
-            this.handleInvalidField(field, transformedValue);
+            this.handleInvalidField(field as string, transformedValue);
         }
 
         // Return validation result
@@ -121,7 +125,7 @@ export class ModelManager {
     }
 
     // Handle valid field value
-    private handleValidField(field: string, value: any, reactionStack: string[] = []): void {
+    private handleValidField<K extends keyof T>(field: K, value: T[K], reactionStack: string[] = []): void {
         // If value hasn't changed, don't trigger reactions
         const valueChanged = !deepEqual(this.data[field], value);
         if (valueChanged) {
@@ -131,23 +135,23 @@ export class ModelManager {
                 delete this.dirtyData[field];
             }
             this.emit('field:change', { field, value });
-            this.triggerReactions(field, reactionStack);
+            this.triggerReactions(field as string, reactionStack);
         }
     }
 
     // Handle invalid field value
     private handleInvalidField(field: string, value: any): void {
         // Validation failed, save to dirtyData
-        this.dirtyData[field] = value;
+        (this.dirtyData as any)[field] = value;
     }
 
     // Update: Batch update fields (async)
-    async setFields(fields: Record<string, any>): Promise<boolean> {
+    async setFields(fields: Partial<T>): Promise<boolean> {
         let allValid = true;
         
         // First validate and update each field
         const validationPromises = Object.entries(fields).map(async ([field, value]) => {
-            const isValid = await this.setField(field, value);
+            const isValid = await this.setField(field as keyof T, value as T[keyof T]);
             if (!isValid) {
                 allValid = false;
             }
@@ -160,12 +164,12 @@ export class ModelManager {
     }
 
     // Get field value
-    getField(field: string): any {
+    getField<K extends keyof T>(field: K): T[K] {
         return this.data[field];
     }
 
     // Get dirty data
-    getDirtyData(): Record<string, any> {
+    getDirtyData(): Partial<T> {
         return { ...this.dirtyData };
     }
 
@@ -187,7 +191,8 @@ export class ModelManager {
             if (reactionStack.includes(field)) {
                 // Circular dependency detected, skip this reaction
                 // Log warning or trigger error
-                console.warn(`Circular dependency detected: ${reactionStack.join(' -> ')} -> ${field}`);
+                const error = this.errorHandler.createCircularDependencyError(reactionStack.join(' -> '), field);
+                this.errorHandler.triggerError(error);
                 return;
             }
 
@@ -216,12 +221,12 @@ export class ModelManager {
     private processReaction(field: string, reaction: Reaction, reactionStack: string[] = []): void {
         try {
             const dependentValues = reaction.fields.reduce((values, f) => {
-                if (this.data[f] === undefined) {
+                if (this.data[f as keyof T] === undefined) {
                     const error = this.errorHandler.createDependencyError(field, f);
                     this.errorHandler.triggerError(error);
                     return { ...values, [f]: undefined };
                 }
-                return { ...values, [f]: this.data[f] };
+                return { ...values, [f]: this.data[f as keyof T] };
             }, {} as Record<string, any>);
 
             // Calculate new value
@@ -284,15 +289,15 @@ export class ModelManager {
         
         if (!isValid) {
             // Validation failed, ensure value is in dirtyData
-            this.dirtyData[field] = value;
+            (this.dirtyData as any)[field] = value;
         } else {
             // Validation passed, remove from dirtyData
-            if (this.dirtyData[field] !== undefined) {
-                delete this.dirtyData[field];
+            if (this.dirtyData[field as keyof T] !== undefined) {
+                delete this.dirtyData[field as keyof T];
             }
             // Update value in data
-            if (!deepEqual(this.data[field], value)) {
-                this.data[field] = value;
+            if (!deepEqual(this.data[field as keyof T], value)) {
+                (this.data as any)[field] = value;
                 this.emit('field:change', { field, value });
                 this.triggerReactions(field);
             }
@@ -330,7 +335,7 @@ export class ModelManager {
         this.eventEmitter.clear();
         
         // Clear data and errors
-        this.data = {};
+        this.data = {} as T;
         this.dirtyData = {};
         this.validationErrors = {};
         this.reactionDeps.clear();
