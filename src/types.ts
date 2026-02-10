@@ -9,6 +9,24 @@ export enum ErrorType {
   UNKNOWN = 'unknown',
 }
 
+export enum ModelEvents {
+  VALIDATION_ERROR = 'validation:error',
+  REACTION_ERROR = 'reaction:error',
+  FIELD_NOT_FOUND = 'field:not-found',
+  FIELD_CHANGE = 'field:change',
+  VALIDATION_COMPLETE = 'validation:complete',
+}
+
+export interface ValidateFieldOptions {
+    schema: FieldSchema;
+    value: any;
+    errors: Record<string, ValidationError[]>;
+    field: string;
+    timeout?: number;
+    errorHandler: ErrorHandler;
+    failFast?: boolean;
+}
+
 export interface AppError {
   type: ErrorType;
   field?: string;

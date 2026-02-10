@@ -1,16 +1,9 @@
-import { FieldSchema, ValidationError, Validator } from './types';
+import { ValidationError, Validator, ValidateFieldOptions } from './types';
 import { ErrorHandler } from './error-handler';
 
 // Unified validation function - supports both synchronous and asynchronous validation
-export async function validateField(
-    schema: FieldSchema,
-    value: any,
-    errors: Record<string, ValidationError[]>,
-    field: string,
-    timeout: number = 5000,
-    errorHandler: ErrorHandler, // Add error handler parameter
-    failFast: boolean = false
-): Promise<boolean> {
+export async function validateField(options: ValidateFieldOptions): Promise<boolean> {
+    const { schema, value, errors, field, timeout = 5000, errorHandler, failFast = false } = options;
     if (!schema.validator) return true;
     let isValid = true;
 
@@ -160,7 +153,7 @@ export function deepEqual(a: any, b: any): boolean {
     if (keysA.length !== keysB.length) return false;
 
     for (const key of keysA) {
-        if (!keysB.includes(key) || !deepEqual(a[key], b[key])) {
+        if (!Object.prototype.hasOwnProperty.call(b, key) || !deepEqual(a[key], b[key])) {
             return false;
         }
     }

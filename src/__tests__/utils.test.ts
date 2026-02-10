@@ -68,7 +68,14 @@ describe('Utils', () => {
                 ]
             };
 
-            const result = await validateField(schema, 'value', errors, 'testField', 1000, errorHandler);
+            const result = await validateField({
+                schema, 
+                value: 'value', 
+                errors, 
+                field: 'testField', 
+                timeout: 1000, 
+                errorHandler
+            });
             expect(result).toBe(true);
         });
     });

@@ -1,55 +1,71 @@
-import { Model, ModelOptions, Reaction, ValidationError, FieldSchema, ErrorType } from './types';
+import { Model, ModelOptions, ValidationError, FieldSchema, ErrorType, ModelEvents } from './types';
 import { validateField, deepEqual } from './utils';
 import { ErrorHandler } from './error-handler';
 import { EventEmitter } from './event-emitter';
+import { ReactionSystem } from './reaction-system';
 
 // Core model class - encapsulates all model-related functionality
 export class ModelManager<T extends Record<string, any> = Record<string, any>> {
     data: T = {} as T;
     validationErrors: Record<string, ValidationError[]> = {};
     dirtyData: Partial<T> = {}; // Stores fields with validation failures and their values
-    private readonly schema: Model<T>;
+    
+    private readonly schema: Model;
     private readonly options: ModelOptions;
-    // Optimization: Map dependency field -> List of reactions that depend on it
-    private readonly reactionDeps: Map<string, Array<{ field: string; reaction: Reaction }>> = new Map();
-    // Optimization: Map reaction -> timeout ID for debouncing
-    // Changed to store object with timeoutId and promise resolver
-    private readonly reactionTimeouts: Map<Reaction, { timeoutId: any, resolve: () => void }> = new Map();
     private readonly eventEmitter: EventEmitter;
     private readonly errorHandler: ErrorHandler;
+    private readonly reactionSystem: ReactionSystem;
     private asyncValidationTimeout: number;
+    private validationRequestIds: Record<string, number> = {};
 
-    // Fix for race condition: track validation request IDs
-    private fieldValidationRequests: Map<string, number> = new Map();
-    // Track pending reactions for settled()
-    private pendingReactions: Set<Promise<any>> = new Set();
-
-    constructor(schema: Model<T>, options?: ModelOptions) {
+    constructor(schema: Model, options?: ModelOptions) {
         this.schema = schema;
         this.options = options || {};
         this.asyncValidationTimeout = this.options.asyncValidationTimeout || 5000; // Default timeout 5 seconds
         this.errorHandler = this.options.errorHandler || new ErrorHandler();
         this.eventEmitter = new EventEmitter();
 
+        this.setupErrorHandling();
+        
+        // Initialize reaction system
+        this.reactionSystem = new ReactionSystem(
+            this.schema, 
+            this.options, 
+            {
+                getValue: (field) => this.getField(field),
+                setValue: (field, value, opts) => this.updateField(field, value, opts),
+                emit: (event, data) => this.emit(event, data),
+                setError: (field, error) => {
+                    if (!this.validationErrors[field]) {
+                        this.validationErrors[field] = [];
+                    }
+                    this.validationErrors[field].push(error);
+                }
+            },
+            this.errorHandler
+        );
+
+        this.initializeDefaults();
+    }
+
+    private setupErrorHandling(): void {
         // Default error listeners
         this.errorHandler.onError(ErrorType.VALIDATION, (error) => {
-            this.emit('validation:error', error);
+            this.emit(ModelEvents.VALIDATION_ERROR, error);
         });
     
         this.errorHandler.onError(ErrorType.REACTION, (error) => {
-            this.emit('reaction:error', error);
+            this.emit(ModelEvents.REACTION_ERROR, error);
         });
 
         this.errorHandler.onError(ErrorType.CIRCULAR_DEPENDENCY, (error) => {
-            this.emit('reaction:error', error);
+            this.emit(ModelEvents.REACTION_ERROR, error);
         });
     
         // Add field not found error event forwarding
         this.errorHandler.onError(ErrorType.FIELD_NOT_FOUND, (error) => {
-            this.emit('field:not-found', error);
+            this.emit(ModelEvents.FIELD_NOT_FOUND, error);
         });
-        this.initializeDefaults();
-        this.collectReactions();
     }
 
     // Initialize default values
@@ -57,23 +73,6 @@ export class ModelManager<T extends Record<string, any> = Record<string, any>> {
         Object.entries(this.schema).forEach(([field, schema]) => {
             if (schema.default !== undefined) {
                 (this.data as any)[field] = schema.default;
-            }
-        });
-    }
-
-    // Collect all reactions and build dependency graph
-    private collectReactions(): void {
-        Object.entries(this.schema).forEach(([field, schema]) => {
-            if (schema.reaction) {
-                const reactions = Array.isArray(schema.reaction) ? schema.reaction : [schema.reaction];
-                reactions.forEach(reaction => {
-                    reaction.fields.forEach(depField => {
-                        if (!this.reactionDeps.has(depField)) {
-                            this.reactionDeps.set(depField, []);
-                        }
-                        this.reactionDeps.get(depField)!.push({ field, reaction });
-                    });
-                });
             }
         });
     }
@@ -94,29 +93,25 @@ export class ModelManager<T extends Record<string, any> = Record<string, any>> {
     }
 
     // Update: Set field value (async)
-    async setField<K extends keyof T>(
-        field: K, 
-        value: T[K], 
-        options: { 
-            reactionStack?: string[], 
-            skipReaction?: boolean,
-            onFieldChange?: (field: K) => void 
-        } = {}
-    ): Promise<boolean> {
-        const schema = this.schema[field as string];
+    async setField<K extends keyof T>(field: K, value: T[K]): Promise<boolean> {
+        return this.updateField(field as string, value);
+    }
+
+    // Internal method for setting field, supporting recursion control for reactions
+    private async updateField(field: string, value: any, options: { reactionStack?: string[], suppressReactions?: boolean } = {}): Promise<boolean> {
+        const schema = this.schema[field];
         if (!schema) {
-            const error = this.errorHandler.createFieldNotFoundError(field as string);
+            const error = this.errorHandler.createFieldNotFoundError(field);
             this.errorHandler.triggerError(error);
             return false;
         }
 
-        // Increment request ID for race condition handling
-        const currentRequestId = (this.fieldValidationRequests.get(field as string) || 0) + 1;
-        this.fieldValidationRequests.set(field as string, currentRequestId);
+        // Track request ID for race condition handling
+        const requestId = Date.now() + Math.random();
+        this.validationRequestIds[field] = requestId;
 
-        // Don't clear errors immediately here, do it after validation succeeds for this request
-        // But we need to pass a fresh error object to validateSingleField
-        const tempErrors: Record<string, ValidationError[]> = {};
+        // Clear previous errors
+        this.validationErrors[field] = [];
 
         // Apply transformation
         let transformedValue = value;
@@ -125,22 +120,18 @@ export class ModelManager<T extends Record<string, any> = Record<string, any>> {
         }
 
         // Validate the field immediately
-        const isValid = await this.validateSingleField(schema, transformedValue, field as string, tempErrors);
+        const isValid = await this.validateSingleField(schema, transformedValue, field);
 
-        // Check if this request is still the latest
-        if (this.fieldValidationRequests.get(field as string) !== currentRequestId) {
-            // Outdated request, ignore result (return result but don't update state)
-            return isValid;
+        // Check if this request is still valid (race condition check)
+        if (this.validationRequestIds[field] !== requestId) {
+             return false;
         }
-
-        // If latest, apply errors
-        this.validationErrors[field as string] = tempErrors[field as string] || [];
 
         // Process validation result
         if (isValid) {
-            this.handleValidField(field, transformedValue, options);
+            this.handleValidField(field, transformedValue, options.reactionStack, options.suppressReactions);
         } else {
-            this.handleInvalidField(field as string, transformedValue);
+            this.handleInvalidField(field, transformedValue);
         }
 
         // Return validation result
@@ -148,49 +139,32 @@ export class ModelManager<T extends Record<string, any> = Record<string, any>> {
     }
 
     // Validate single field
-    private async validateSingleField(
-        schema: FieldSchema, 
-        value: any, 
-        field: string,
-        errors: Record<string, ValidationError[]> = this.validationErrors
-    ): Promise<boolean> {
-        return validateField(
+    private async validateSingleField(schema: FieldSchema, value: any, field: string): Promise<boolean> {
+        return validateField({
             schema, 
             value, 
-            errors, 
+            errors: this.validationErrors, 
             field, 
-            this.asyncValidationTimeout, 
-            this.errorHandler,
-            this.options.failFast // Pass failFast option
-        );
+            timeout: this.asyncValidationTimeout, 
+            errorHandler: this.errorHandler,
+            failFast: this.options.failFast ?? false
+        });
     }
 
     // Handle valid field value
-    private handleValidField<K extends keyof T>(
-        field: K, 
-        value: T[K], 
-        options: { 
-            reactionStack?: string[], 
-            skipReaction?: boolean,
-            onFieldChange?: (field: K) => void 
-        } = {}
-    ): void {
+    private handleValidField(field: string, value: any, reactionStack: string[] = [], suppressReactions: boolean = false): void {
         // If value hasn't changed, don't trigger reactions
         const valueChanged = !deepEqual(this.data[field], value);
         if (valueChanged) {
-            this.data[field] = value;
+            this.data[field as keyof T] = value;
             // Remove from dirtyData if exists
-            if (this.dirtyData[field] !== undefined) {
+            if (this.dirtyData[field]) {
                 delete this.dirtyData[field];
             }
-            this.emit('field:change', { field, value });
+            this.emit(ModelEvents.FIELD_CHANGE, { field, value });
             
-            if (options.onFieldChange) {
-                options.onFieldChange(field);
-            }
-
-            if (!options.skipReaction) {
-                this.triggerReactions(field as string, options.reactionStack);
+            if (!suppressReactions) {
+                this.reactionSystem.triggerReactions(field, reactionStack);
             }
         }
     }
@@ -204,27 +178,20 @@ export class ModelManager<T extends Record<string, any> = Record<string, any>> {
     // Update: Batch update fields (async)
     async setFields(fields: Partial<T>): Promise<boolean> {
         let allValid = true;
-        const changedFields: string[] = [];
         
         // First validate and update each field
-        const validationPromises = Object.entries(fields).map(async ([field, value]) => {
-            const isValid = await this.setField(field as keyof T, value as T[keyof T], { 
-                skipReaction: true,
-                onFieldChange: (f) => changedFields.push(f as string)
-            });
-            if (!isValid) {
-                allValid = false;
-            }
-        });
+        // Optimization: Run in parallel since they are async
+        const results = await Promise.all(
+            Object.entries(fields).map(([field, value]) => 
+                this.updateField(field as string, value, { suppressReactions: true })
+            )
+        );
 
-        // Wait for all validations to complete
-        await Promise.all(validationPromises);
-
-        // Trigger batched reactions
-        if (changedFields.length > 0) {
-            this.triggerBatchReactions(changedFields);
-        }
-
+        allValid = results.every(result => result);
+        
+        // Trigger reactions for all fields involved in the batch update
+        this.reactionSystem.triggerReactionsForFields(Object.keys(fields));
+        
         return allValid;
     }
 
@@ -243,141 +210,16 @@ export class ModelManager<T extends Record<string, any> = Record<string, any>> {
         this.dirtyData = {};
     }
 
-    private triggerBatchReactions(changedFields: string[]): void {
-        const uniqueReactions = new Map<Reaction, string>(); // reaction -> outputField
-        
-        changedFields.forEach(changedField => {
-            const deps = this.reactionDeps.get(changedField);
-            if (deps) {
-                deps.forEach(({ field, reaction }) => {
-                    uniqueReactions.set(reaction, field);
-                });
-            }
-        });
-        
-        uniqueReactions.forEach((field, reaction) => {
-             // Start fresh stack for batch updates
-             this.scheduleReaction(field, reaction, this.options.debounceReactions || 0);
-        });
-    }
-
-    // Trigger related reactions
-    private triggerReactions(changedField: string, reactionStack: string[] = []): void {
-        const debounceTime = this.options.debounceReactions || 0;
-        const reactionsToTrigger = this.reactionDeps.get(changedField);
-        
-        if (!reactionsToTrigger) return;
-
-        // Trigger reactions
-        reactionsToTrigger.forEach(({ field, reaction }) => {
-            // Check for circular dependency
-            if (reactionStack.includes(field)) {
-                // Circular dependency detected, skip this reaction
-                // Log warning or trigger error
-                const error = this.errorHandler.createCircularDependencyError(reactionStack.join(' -> '), field);
-                this.errorHandler.triggerError(error);
-                return;
-            }
-
-            const promise = this.scheduleReaction(field, reaction, debounceTime, [...reactionStack, changedField]);
-            this.trackReaction(promise);
-        });
-    }
-
-    private trackReaction(promise: Promise<any>): void {
-        this.pendingReactions.add(promise);
-        promise.then(() => {
-            this.pendingReactions.delete(promise);
-        }).catch(() => {
-            this.pendingReactions.delete(promise);
-        });
-    }
-
-    // Schedule reaction execution (considering debouncing)
-    private scheduleReaction(field: string, reaction: Reaction, debounceTime: number, reactionStack: string[] = []): Promise<void> {
-        if (this.reactionTimeouts.has(reaction)) {
-            const entry = this.reactionTimeouts.get(reaction);
-            if (entry) {
-                clearTimeout(entry.timeoutId);
-                // Resolve the previous promise as it was cancelled/superseded
-                entry.resolve();
-            }
-        }
-
-        if (debounceTime > 0) {
-            return new Promise<void>((resolve) => {
-                const timeoutId = setTimeout(() => {
-                    this.reactionTimeouts.delete(reaction);
-                    this.processReaction(field, reaction, reactionStack)
-                        .then(() => resolve())
-                        .catch(() => resolve()); // Resolve even on error to unblock settled()
-                }, debounceTime);
-                
-                this.reactionTimeouts.set(reaction, { timeoutId, resolve });
-            });
-        } else {
-            return this.processReaction(field, reaction, reactionStack);
-        }
-    }
-
-    // Process single reaction
-    private async processReaction(field: string, reaction: Reaction, reactionStack: string[] = []): Promise<void> {
-        try {
-            const dependentValues = reaction.fields.reduce((values, f) => {
-                if (this.data[f as keyof T] === undefined) {
-                    const error = this.errorHandler.createDependencyError(field, f);
-                    this.errorHandler.triggerError(error);
-                    return { ...values, [f]: undefined };
-                }
-                return { ...values, [f]: this.data[f as keyof T] };
-            }, {} as Record<string, any>);
-
-            // Calculate new value
-            try {
-                const computedValue = reaction.computed(dependentValues);
-                // Wait for setField to complete
-                await this.setField(field, computedValue, { reactionStack });
-                if (reaction.action) {
-                    reaction.action({ ...dependentValues, computed: computedValue });
-                }
-            } catch (error) {
-                this.handleReactionError(field, error as Error);
-            }
-        } catch (error) {
-            this.handleReactionError(field, error as Error);
-        }
-    }
-
-    private handleReactionError(field: string, error: Error): void {
-        const appError = this.errorHandler.createReactionError(field, error);
-        this.errorHandler.triggerError(appError);
-
-        if (!this.validationErrors['__reactions']) {
-            this.validationErrors['__reactions'] = [];
-        }
-        this.validationErrors['__reactions'].push({
-            field,
-            rule: 'reaction_error',
-            message: appError.message
-        });
-    }
-
     // Update: Validate all fields (async)
     async validateAll(): Promise<boolean> {
-        let allValid = true;
-
         // Validate all fields
-        const validationPromises = Object.keys(this.schema).map(async (field) => {
-            const isValid = await this.validateAndUpdateField(field);
-            if (!isValid) {
-                allValid = false;
-            }
-        });
-
-        await Promise.all(validationPromises);
+        const validationPromises = Object.keys(this.schema).map(field => this.validateAndUpdateField(field));
+        
+        const results = await Promise.all(validationPromises);
+        const allValid = results.every(res => res);
 
         // Trigger validation complete event
-        this.emit('validation:complete', { isValid: allValid });
+        this.emit(ModelEvents.VALIDATION_COMPLETE, { isValid: allValid });
 
         // Check if there are any errors
         return allValid;
@@ -389,15 +231,16 @@ export class ModelManager<T extends Record<string, any> = Record<string, any>> {
         // Prefer value from dirtyData, if not available use value from data
         const value = this.dirtyData[field] !== undefined ? this.dirtyData[field] : this.data[field];
         this.validationErrors[field] = [];
-        const isValid = await validateField(
+        
+        const isValid = await validateField({
             schema, 
             value, 
-            this.validationErrors, 
+            errors: this.validationErrors, 
             field, 
-            this.asyncValidationTimeout, 
-            this.errorHandler,
-            this.options.failFast // Pass failFast option
-        );
+            timeout: this.asyncValidationTimeout, 
+            errorHandler: this.errorHandler,
+            failFast: this.options.failFast ?? false
+        });
         
         if (!isValid) {
             // Validation failed, ensure value is in dirtyData
@@ -410,8 +253,8 @@ export class ModelManager<T extends Record<string, any> = Record<string, any>> {
             // Update value in data
             if (!deepEqual(this.data[field as keyof T], value)) {
                 (this.data as any)[field] = value;
-                this.emit('field:change', { field, value });
-                this.triggerReactions(field);
+                this.emit(ModelEvents.FIELD_CHANGE, { field, value });
+                this.reactionSystem.triggerReactions(field);
             }
         }
 
@@ -434,38 +277,20 @@ export class ModelManager<T extends Record<string, any> = Record<string, any>> {
     getErrorHandler(): ErrorHandler {
         return this.errorHandler;
     }
+    
+    // Wait for system to settle (reactions, async validations)
+    async settled(): Promise<void> {
+        await this.reactionSystem.settled();
+        // Simple implementation: wait for next tick
+        await new Promise(resolve => setTimeout(resolve, 0));
+    }
 
     // Clean up resources
     dispose(): void {
-        // Clear all reaction timeouts
-        this.reactionTimeouts.forEach((entry) => {
-            clearTimeout(entry.timeoutId);
-            entry.resolve();
-        });
-        this.reactionTimeouts.clear();
-        
-        // Clear all event listeners
+        this.reactionSystem.dispose();
         this.eventEmitter.clear();
-        
-        // Clear data and errors
         this.data = {} as T;
         this.dirtyData = {};
         this.validationErrors = {};
-        this.reactionDeps.clear();
-    }
-    
-    // Wait for all pending reactions and validations to complete
-    async settled(): Promise<void> {
-        // Wait until pendingReactions is empty
-        // Note: New reactions might be added while we wait, so we loop
-        while (this.pendingReactions.size > 0) {
-            // We only track reaction promises in pendingReactions.
-            
-            // Wait for all currently known pending reactions
-            await Promise.all(Array.from(this.pendingReactions));
-            
-            // Give a tick for any new microtasks or timers to register
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
     }
 }
