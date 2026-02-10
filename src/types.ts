@@ -53,9 +53,9 @@ export interface FieldSchema {
     transform?: (value: any) => any;
 }
 
-export interface Model {
-    [key: string]: FieldSchema;
-}
+export type Model<T = Record<string, any>> = {
+    [K in keyof T]-?: FieldSchema;
+};
 
 export interface ModelOptions {
     // Async validation timeout in milliseconds
@@ -68,6 +68,8 @@ export interface ModelOptions {
     strictMode?: boolean;
     // Error handler instance
     errorHandler?: ErrorHandler;
+    // Validation strategy: if true, stop validating a field after the first error
+    failFast?: boolean;
 }
 
 export interface ModelReturn<T = Record<string, any>> {
@@ -82,5 +84,7 @@ export interface ModelReturn<T = Record<string, any>> {
     off: (event: string, callback?: (...args: any[]) => void) => void;
     getDirtyData: () => Partial<T>;
     clearDirtyData: () => void;
+    // Wait for all pending reactions and validations to complete
+    settled: () => Promise<void>;
     dispose: () => void;
 }

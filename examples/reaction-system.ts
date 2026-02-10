@@ -1,7 +1,15 @@
 import { createModel } from '../src/index';
 
+interface Product {
+  price: number;
+  quantity: number;
+  total: number;
+  discount: number;
+  finalTotal: number;
+}
+
 // 定义带反应的模型架构
-const productModel = createModel({
+const productModel = createModel<Product>({
   price: {
     type: 'number',
     default: 0

@@ -32,8 +32,16 @@ yarn add model-reaction
 ```typescript
 import { createModel, Model, ValidationRules, ErrorType } from 'model-reaction';
 
+// Define the interface for your data model
+interface User {
+  name: string;
+  age: number;
+  info: string;
+}
+
 // Define model schema
-const userModel = createModel({
+// Use the generic type to ensure schema matches the interface
+const userModel = createModel<User>({
   name: {
     type: 'string',
     validator: [
@@ -117,8 +125,13 @@ ValidationRules.asyncUnique: (fieldName: string) => new Rule(
     }
 )
 
+interface AsyncUser {
+  name: string;
+  username: string;
+}
+
 // Define model schema
-const asyncUserModel = createModel({
+const asyncUserModel = createModel<AsyncUser>({
   name: {
     type: 'string',
     validator: [ValidationRules.required.withMessage('Username cannot be empty')],
@@ -164,22 +177,23 @@ The model manager is the core class of the library, providing the following meth
 
 #### Constructor
 ```typescript
-createModel(schema: Model, options?: ModelOptions);
+createModel<T>(schema: Model<T>, options?: ModelOptions);
 ```
 
 #### Methods
 
-- `setField(field: string, value: any): Promise<boolean>`: Set a single field value, returns validation result
-- `setFields(fields: Record<string, any>): Promise<boolean>`: Batch set field values, returns validation result
-- `getField(field: string): any`: Get field value
+- `setField(field: keyof T, value: T[keyof T]): Promise<boolean>`: Set a single field value, returns validation result
+- `setFields(fields: Partial<T>): Promise<boolean>`: Batch set field values, returns validation result
+- `getField(field: keyof T): T[keyof T]`: Get field value
 - `validateAll(): Promise<boolean>`: Validate all fields, returns overall validation result
 - `getValidationSummary(): string`: Get validation summary information
-- `getDirtyData(): Record<string, any>`: Get validation-failed dirty data
+- `getDirtyData(): Partial<T>`: Get validation-failed dirty data
 - `clearDirtyData(): void`: Clear all dirty data
+- `settled(): Promise<void>`: Wait for all pending reactions and validations to complete
 - `dispose(): void`: Dispose the model, clear all timers and listeners
 - `on(event: string, callback: (data: any) => void): void`: Subscribe to events
 - `off(event: string, callback?: (data: any) => void): void`: Unsubscribe from events
-- `get data(): Record<string, any>`: Get all field values
+- `get data(): T`: Get all field values
 - `get validationErrors(): Record<string, ValidationError[]>`: Get all validation errors
 
 #### Events
@@ -198,6 +212,7 @@ Model configuration options:
 - `debounceReactions?: number`: Debounce time for reaction triggering (in milliseconds)
 - `asyncValidationTimeout?: number`: Timeout time for asynchronous validation (in milliseconds)
 - `errorFormatter?: (error: ValidationError) => string`: Custom error formatting function
+- `failFast?: boolean`: Validation strategy. If true, stops validating a field after the first error. Default is false.
 
 ### ErrorHandler
 
@@ -318,6 +333,42 @@ const asyncModel = createModel({
     default: ''
   }
 });
+```
+
+### Waiting for Async Operations (Reactions & Validations)
+
+When using asynchronous validations or reactions (especially with debouncing), simply awaiting `setField` might not be enough to ensure all side effects (like cascading reactions) are finished.
+
+Use the `settled()` method to wait for all pending operations:
+
+```typescript
+// Define schema with reaction
+interface Schema {
+  source: string;
+  target: string;
+}
+const model = createModel<Schema>({
+  source: { type: 'string', default: '' },
+  target: {
+    type: 'string',
+    default: '',
+    reaction: {
+      fields: ['source'],
+      computed: (vals) => vals.source.toUpperCase()
+    }
+  }
+}, { debounceReactions: 100 }); // Reactions are debounced
+
+// Trigger update
+await model.setField('source', 'hello');
+
+// At this point, 'target' might not be updated yet due to debounce
+console.log(model.getField('target')); // ''
+
+// Wait for all reactions to settle
+await model.settled();
+
+console.log(model.getField('target')); // 'HELLO'
 ```
 
 ## Examples

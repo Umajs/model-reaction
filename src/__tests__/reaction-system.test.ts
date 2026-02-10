@@ -12,7 +12,12 @@ describe('ModelManager - Reaction System', () => {
 
     // Asynchronous reaction test
     test('should trigger reactions when dependent fields change asynchronously', async () => {
-        const reactionSchema: Model = {
+        interface ReactionSchema {
+            firstName: string;
+            lastName: string;
+            fullName: string;
+        }
+        const reactionSchema: Model<ReactionSchema> = {
             firstName: { type: 'string', default: '' },
             lastName: { type: 'string', default: '' },
             fullName: {
@@ -24,7 +29,7 @@ describe('ModelManager - Reaction System', () => {
                 },
             },
         };
-        const modelManager = createModel(reactionSchema);
+        const modelManager = createModel<ReactionSchema>(reactionSchema);
         await modelManager.setField('firstName', 'John');
         await modelManager.setField('lastName', 'Doe');
         // Since reactions are now asynchronous, we need to wait a bit
@@ -34,7 +39,11 @@ describe('ModelManager - Reaction System', () => {
 
     // Error handling test
     test('should handle reaction errors asynchronously', async () => {
-        const errorReactionSchema: Model = {
+        interface ErrorReactionSchema {
+            input: string;
+            output: string;
+        }
+        const errorReactionSchema: Model<ErrorReactionSchema> = {
             input: { type: 'string', default: '' },
             output: {
                 type: 'string',
@@ -50,7 +59,7 @@ describe('ModelManager - Reaction System', () => {
                 },
             },
         };
-        const modelManager = createModel(errorReactionSchema);
+        const modelManager = createModel<ErrorReactionSchema>(errorReactionSchema);
 
         await modelManager.setField('input', 'error');
         // Wait for reaction execution
@@ -66,7 +75,11 @@ describe('ModelManager - Reaction System', () => {
     test('should handle invalid dependent fields in reaction', async () => {
         const consoleSpy = jest.spyOn(console, 'error');
 
-        const invalidDepsSchema: Model = {
+        interface InvalidDepsSchema {
+            validField: string;
+            invalidField: string;
+        }
+        const invalidDepsSchema: Model<InvalidDepsSchema> = {
             validField: { type: 'string', default: 'valid' },
             invalidField: {
                 type: 'string',
@@ -77,7 +90,7 @@ describe('ModelManager - Reaction System', () => {
                 },
             },
         };
-        const modelManager = createModel(invalidDepsSchema);
+        const modelManager = createModel<InvalidDepsSchema>(invalidDepsSchema);
 
         await modelManager.setField('validField', 'test');
         // Wait for reaction execution
@@ -92,7 +105,11 @@ describe('ModelManager - Reaction System', () => {
     test('should handle circular dependencies in reaction', async () => {
         const consoleSpy = jest.spyOn(console, 'error');
         
-        const circularSchema: Model = {
+        interface CircularSchema {
+            fieldA: number;
+            fieldB: number;
+        }
+        const circularSchema: Model<CircularSchema> = {
             fieldA: {
                 type: 'number',
                 default: 0,
@@ -111,7 +128,7 @@ describe('ModelManager - Reaction System', () => {
             },
         };
 
-        const modelManager = createModel(circularSchema);
+        const modelManager = createModel<CircularSchema>(circularSchema);
 
         await modelManager.setField('fieldA', 1);
         

@@ -7,7 +7,11 @@ describe('Optimizations and Adjustments', () => {
         const spy1 = jest.fn();
         const spy2 = jest.fn();
 
-        const schema: Model = {
+        interface Schema {
+            source: string;
+            target: string;
+        }
+        const schema: Model<Schema> = {
             source: { type: 'string', default: 'start' },
             target: {
                 type: 'string',
@@ -31,7 +35,7 @@ describe('Optimizations and Adjustments', () => {
             }
         };
 
-        const model = createModel(schema);
+        const model = createModel<Schema>(schema);
         
         await model.setField('source', 'update');
         await new Promise(r => setTimeout(r, 20));
@@ -48,7 +52,12 @@ describe('Optimizations and Adjustments', () => {
         const spy1 = jest.fn();
         const spy2 = jest.fn();
 
-        const schema: Model = {
+        interface Schema {
+            dep1: string;
+            dep2: string;
+            target: string;
+        }
+        const schema: Model<Schema> = {
             dep1: { type: 'string', default: 'a' },
             dep2: { type: 'string', default: 'b' },
             target: {
@@ -73,7 +82,7 @@ describe('Optimizations and Adjustments', () => {
             }
         };
 
-        const model = createModel(schema);
+        const model = createModel<Schema>(schema);
         
         await model.setField('dep1', 'changed');
         await new Promise(r => setTimeout(r, 20));
@@ -86,7 +95,11 @@ describe('Optimizations and Adjustments', () => {
     
     test('Dispose should clear timeouts', async () => {
         const spy = jest.fn();
-        const schema: Model = {
+        interface Schema {
+            source: string;
+            target: string;
+        }
+        const schema: Model<Schema> = {
             source: { type: 'string', default: 'a' },
             target: {
                 type: 'string',
@@ -101,7 +114,7 @@ describe('Optimizations and Adjustments', () => {
             }
         };
 
-        const modelManager = new ModelManager(schema, { debounceReactions: 100 });
+        const modelManager = new ModelManager<Schema>(schema, { debounceReactions: 100 });
         
         // Trigger reaction
         modelManager.setField('source', 'changed');

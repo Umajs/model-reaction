@@ -1,7 +1,14 @@
 import { createModel, Model, ValidationRules, Rule, ModelReturn } from '../index';
 
+interface User {
+    name: string;
+    age: number;
+    email: string;
+    username: string;
+}
+
 describe('ModelManager - Validation', () => {
-    const testSchema: Model = {
+    const testSchema: Model<User> = {
         name: {
             type: 'string',
             validator: [ValidationRules.required],
@@ -33,13 +40,14 @@ describe('ModelManager - Validation', () => {
                     },
                 },
             ],
+            default: ''
         },
     };
 
-    let modelManager: ModelReturn;
+    let modelManager: ModelReturn<User>;
 
     beforeEach(() => {
-        modelManager = createModel(testSchema, { asyncValidationTimeout: 5000 });
+        modelManager = createModel<User>(testSchema, { asyncValidationTimeout: 5000 });
         jest.spyOn(console, 'error').mockImplementation(() => {});
     });
 
@@ -53,6 +61,7 @@ describe('ModelManager - Validation', () => {
         const originalAge = modelManager.getField('age');
 
         // Try to set invalid value
+        // @ts-expect-error - Testing runtime type check
         const result = await modelManager.setField('age', 'not-a-number');
 
         // Validate return value
@@ -93,7 +102,10 @@ describe('ModelManager - Validation', () => {
     test('should handle async validation timeout', async () => {
         let timeoutId: any;
         // Create a validator that will timeout
-        const timeoutSchema: Model = {
+        interface TimeoutSchema {
+            slowField: string;
+        }
+        const timeoutSchema: Model<TimeoutSchema> = {
             slowField: {
                 type: 'string',
                 validator: [
@@ -103,9 +115,10 @@ describe('ModelManager - Validation', () => {
                         });
                     }),
                 ],
+                default: ''
             },
         };
-        const timeoutModel = createModel(timeoutSchema, { asyncValidationTimeout: 100 });
+        const timeoutModel = createModel<TimeoutSchema>(timeoutSchema, { asyncValidationTimeout: 100 });
 
         const result = await timeoutModel.setField('slowField', 'value');
         expect(result).toBe(false);
@@ -122,6 +135,7 @@ describe('ModelManager - Validation', () => {
     test('should reject invalid batch updates asynchronously', async () => {
         const result = await modelManager.setFields({
             name: '',
+            // @ts-expect-error - Testing runtime type check
             age: 'invalid',
             email: 'not-an-email',
         });

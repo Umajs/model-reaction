@@ -11,7 +11,11 @@ describe('ModelManager - Boundary Cases', () => {
 
     // Boundary cases test
     test('should handle null and undefined values correctly', async () => {
-        const nullableSchema: Model = {
+        interface NullableSchema {
+            nullableField: string | null;
+            requiredField: string | null;
+        }
+        const nullableSchema: Model<NullableSchema> = {
             nullableField: {
                 type: 'string',
                 validator: [],
@@ -23,7 +27,7 @@ describe('ModelManager - Boundary Cases', () => {
                 default: '',
             },
         };
-        const modelManager = createModel(nullableSchema);
+        const modelManager = createModel<NullableSchema>(nullableSchema);
 
         expect(modelManager.getField('nullableField')).toBeNull();
 
@@ -36,7 +40,10 @@ describe('ModelManager - Boundary Cases', () => {
 
     // Boundary values test
     test('should handle boundary values for number validation', async () => {
-        const boundarySchema: Model = {
+        interface BoundarySchema {
+            age: number;
+        }
+        const boundarySchema: Model<BoundarySchema> = {
             age: {
                 type: 'number',
                 validator: [
@@ -47,7 +54,7 @@ describe('ModelManager - Boundary Cases', () => {
                 default: 18,
             },
         };
-        const modelManager = createModel(boundarySchema);
+        const modelManager = createModel<BoundarySchema>(boundarySchema);
 
         // Boundary value test
         await modelManager.setField('age', 18);

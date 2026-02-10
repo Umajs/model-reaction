@@ -1,7 +1,13 @@
 import { createModel, ValidationRules } from '../src/index';
 
+interface Form {
+  name: string;
+  email: string;
+  submitStatus: string;
+}
+
 // 创建模型
-const formModel = createModel({
+const formModel = createModel<Form>({
   name: {
     type: 'string',
     validator: [ValidationRules.required],

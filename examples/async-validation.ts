@@ -1,5 +1,10 @@
 import { createModel, ValidationRules, Rule } from '../src/index';
 
+interface User {
+  username: string;
+  email: string;
+}
+
 // 模拟用户名唯一性检查
 async function checkUsernameUnique(username: string): Promise<boolean> {
   // 模拟API调用延迟
@@ -13,7 +18,7 @@ async function checkUsernameUnique(username: string): Promise<boolean> {
 }
 
 // 定义带异步验证的模型
-const userModel = createModel({
+const userModel = createModel<User>({
   username: {
     type: 'string',
     validator: [

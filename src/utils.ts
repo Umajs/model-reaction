@@ -8,58 +8,90 @@ export async function validateField(
     errors: Record<string, ValidationError[]>,
     field: string,
     timeout: number = 5000,
-    errorHandler: ErrorHandler // Add error handler parameter
+    errorHandler: ErrorHandler, // Add error handler parameter
+    failFast: boolean = false
 ): Promise<boolean> {
     if (!schema.validator) return true;
     let isValid = true;
 
-    // Collect all validation promises
-    const validationPromises = schema.validator.map(validator => {
-        // Handle synchronous validation
-        if (validator.validate) {
-            const result = validator.validate(value);
-            
-            // Check if result is a promise
-            if (result instanceof Promise) {
-                // Async validation with timeout
-                let timeoutId: number;
-                const timeoutPromise = new Promise<boolean>((_, reject) => {
-                    timeoutId = setTimeout(() => reject(new Error(`Validation timeout: ${field}`)), timeout) as unknown as number;
-                });
-
-                return Promise.race([result, timeoutPromise])
-                    .then(res => {
-                        clearTimeout(timeoutId);
-                        if (!res) {
-                            handleValidationError(field, validator, validator.message, errors, errorHandler);
-                            isValid = false;
-                        }
-                        return res;
-                    })
-                    .catch(error => {
-                        clearTimeout(timeoutId);
-                        const errorMessage = error instanceof Error ? error.message : String(error);
-                        handleExceptionError(field, errorMessage, errors, errorHandler);
-                        isValid = false;
-                        return false;
-                    });
-            } else {
-                // Synchronous validation - no timeout needed
-                if (!result) {
-                    handleValidationError(field, validator, validator.message, errors, errorHandler);
-                    isValid = false;
-                }
-                return Promise.resolve(result);
+    if (failFast) {
+        // Sequential validation for failFast
+        for (const validator of schema.validator) {
+            const result = await executeValidator(validator, value, field, timeout, errors, errorHandler);
+            if (!result) {
+                isValid = false;
+                break; // Stop on first error
             }
         }
-        
-        return Promise.resolve(true);
-    });
+    } else {
+        // Parallel validation (original behavior)
+        const validationPromises = schema.validator.map(validator => 
+            executeValidator(validator, value, field, timeout, errors, errorHandler)
+                .then(res => {
+                    if (!res) isValid = false;
+                    return res;
+                })
+        );
 
-    // Wait for all validations to complete
-    await Promise.all(validationPromises);
+        // Wait for all validations to complete
+        await Promise.all(validationPromises);
+    }
 
     return isValid;
+}
+
+async function executeValidator(
+    validator: Validator,
+    value: any,
+    field: string,
+    timeout: number,
+    errors: Record<string, ValidationError[]>,
+    errorHandler: ErrorHandler
+): Promise<boolean> {
+    // Handle synchronous validation
+    if (!validator.validate) {
+        return true;
+    }
+
+    try {
+        const result = validator.validate(value);
+        
+        // Check if result is a promise
+        if (result instanceof Promise) {
+            // Async validation with timeout
+            let timeoutId: number;
+            const timeoutPromise = new Promise<boolean>((_, reject) => {
+                timeoutId = setTimeout(() => reject(new Error(`Validation timeout: ${field}`)), timeout) as unknown as number;
+            });
+
+            try {
+                const res = await Promise.race([result, timeoutPromise]);
+                clearTimeout(timeoutId!);
+                if (!res) {
+                    handleValidationError(field, validator, validator.message, errors, errorHandler);
+                    return false;
+                }
+                return true;
+            } catch (error) {
+                clearTimeout(timeoutId!);
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                handleExceptionError(field, errorMessage, errors, errorHandler);
+                return false;
+            }
+        } else {
+            // Synchronous validation - no timeout needed
+            if (!result) {
+                handleValidationError(field, validator, validator.message, errors, errorHandler);
+                return false;
+            }
+            return true;
+        }
+    } catch (error) {
+        // Handle synchronous validation errors
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        handleExceptionError(field, errorMessage, errors, errorHandler);
+        return false;
+    }
 }
 
 function handleValidationError(

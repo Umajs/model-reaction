@@ -1,5 +1,36 @@
 import { createModel, ErrorHandler, ErrorType, Rule, ValidationRules } from '../src/index';
 
+interface UserInfo {
+    name: string;
+    email: string;
+    phone: string;
+}
+
+interface Product {
+    id: number;
+    name: string;
+    price: number;
+    quantity: number;
+}
+
+interface CreditCardInfo {
+    cardNumber?: string;
+    expiry?: string;
+    cvv?: string;
+}
+
+interface OrderForm {
+    userInfo: UserInfo;
+    email: string;
+    products: Product[];
+    totalAmount: number;
+    couponCode: string;
+    discountAmount: number;
+    finalAmount: number;
+    paymentMethod: string;
+    creditCardInfo: CreditCardInfo;
+}
+
 // 模拟API调用 - 检查邮箱唯一性
 async function checkEmailUnique(email: string): Promise<boolean> {
   return new Promise(resolve => {
@@ -30,7 +61,7 @@ errorHandler.onError(ErrorType.REACTION, (error) => {
 });
 
 // 创建复杂表单模型
-const orderFormModel = createModel({
+const orderFormModel = createModel<OrderForm>({
   // 基本信息
   userInfo: {
     type: 'object',

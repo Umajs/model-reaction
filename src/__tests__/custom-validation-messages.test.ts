@@ -1,7 +1,14 @@
 import { createModel, Model, ValidationRules, Rule, ModelReturn } from '../index';
 
+interface User {
+    name: string;
+    age: number;
+    email: string;
+    customRule: string;
+}
+
 describe('ModelManager - Custom Validation Messages', () => {
-    const testSchema: Model = {
+    const testSchema: Model<User> = {
         name: {
             type: 'string',
             validator: [ValidationRules.required.withMessage('Name cannot be empty')],
@@ -31,13 +38,14 @@ describe('ModelManager - Custom Validation Messages', () => {
                     return value.startsWith('custom_');
                 }).withMessage('Value must start with custom_'),
             ],
+            default: '' // Added default value
         },
     };
 
-    let modelManager: ModelReturn;
+    let modelManager: ModelReturn<User>;
 
     beforeEach(() => {
-        modelManager = createModel(testSchema);
+        modelManager = createModel<User>(testSchema);
         jest.spyOn(console, 'error').mockImplementation(() => {});
     });
 
@@ -53,6 +61,7 @@ describe('ModelManager - Custom Validation Messages', () => {
 
     // Test custom number message
     test('should use custom number message', async () => {
+        // @ts-expect-error - Testing runtime type check
         await modelManager.setField('age', 'not-a-number');
         expect(modelManager.getValidationSummary()).toContain('age: Age must be a number');
     });

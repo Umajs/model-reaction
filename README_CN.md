@@ -32,8 +32,16 @@ yarn add model-reaction
 ```typescript
 import { createModel, Model, ValidationRules, ErrorType } from 'model-reaction';
 
+// 定义数据模型的接口
+interface User {
+  name: string;
+  age: number;
+  info: string;
+}
+
 // 定义模型架构
-const userModel = createModel({
+// 使用泛型确保 Schema 与接口匹配
+const userModel = createModel<User>({
   name: {
     type: 'string',
     validator: [
@@ -117,8 +125,13 @@ ValidationRules.asyncUnique: (fieldName: string) => new Rule(
     }
 )
 
+interface AsyncUser {
+  name: string;
+  username: string;
+}
+
 // 定义模型架构
-const asyncUserModel = createModel({
+const asyncUserModel = createModel<AsyncUser>({
   name: {
     type: 'string',
     validator: [ValidationRules.required.withMessage('用户名不能为空')],
@@ -164,22 +177,23 @@ console.log('脏数据:', asyncUserModel.getDirtyData());
 
 #### 构造函数
 ```typescript
-createModel(schema: Model, options?: ModelOptions);
+createModel<T>(schema: Model<T>, options?: ModelOptions);
 ```
 
 #### 方法
 
-- `setField(field: string, value: any): Promise<boolean>`: 设置单个字段值，返回验证结果
-- `setFields(fields: Record<string, any>): Promise<boolean>`: 批量设置字段值，返回验证结果
-- `getField(field: string): any`: 获取字段值
+- `setField(field: keyof T, value: T[keyof T]): Promise<boolean>`: 设置单个字段值，返回验证结果
+- `setFields(fields: Partial<T>): Promise<boolean>`: 批量设置字段值，返回验证结果
+- `getField(field: keyof T): T[keyof T]`: 获取字段值
 - `validateAll(): Promise<boolean>`: 验证所有字段，返回整体验证结果
 - `getValidationSummary(): string`: 获取验证摘要信息
-- `getDirtyData(): Record<string, any>`: 获取验证失败的脏数据
+- `getDirtyData(): Partial<T>`: 获取验证失败的脏数据
 - `clearDirtyData(): void`: 清除所有脏数据
+- `settled(): Promise<void>`: 等待所有挂起的反应和验证完成
 - `dispose(): void`: 销毁模型，清除所有定时器和监听器
 - `on(event: string, callback: (data: any) => void): void`: 订阅事件
 - `off(event: string, callback?: (data: any) => void): void`: 取消订阅事件
-- `get data(): Record<string, any>`: 获取所有字段值
+- `get data(): T`: 获取所有字段值
 - `get validationErrors(): Record<string, ValidationError[]>`: 获取所有验证错误
 
 #### 事件
@@ -198,6 +212,7 @@ createModel(schema: Model, options?: ModelOptions);
 - `debounceReactions?: number`: 反应触发的防抖时间（毫秒）
 - `asyncValidationTimeout?: number`: 异步验证的超时时间（毫秒）
 - `errorFormatter?: (error: ValidationError) => string`: 自定义错误格式化函数
+- `failFast?: boolean`: 验证策略。如果为 true，则在遇到第一个错误后停止验证字段。默认为 false。
 
 ### ErrorHandler
 
@@ -318,6 +333,42 @@ const asyncModel = createModel({
     default: ''
   }
 });
+```
+
+### 等待异步操作（反应与验证）
+
+当使用异步验证或反应（特别是带有防抖时），仅仅 `await setField` 可能不足以确保所有副作用（如级联反应）都已完成。
+
+使用 `settled()` 方法来等待所有挂起的操作：
+
+```typescript
+// 定义带反应的 Schema
+interface Schema {
+  source: string;
+  target: string;
+}
+const model = createModel<Schema>({
+  source: { type: 'string', default: '' },
+  target: {
+    type: 'string',
+    default: '',
+    reaction: {
+      fields: ['source'],
+      computed: (vals) => vals.source.toUpperCase()
+    }
+  }
+}, { debounceReactions: 100 }); // 反应带有防抖
+
+// 触发更新
+await model.setField('source', 'hello');
+
+// 此时，由于防抖，'target' 可能尚未更新
+console.log(model.getField('target')); // ''
+
+// 等待所有反应稳定
+await model.settled();
+
+console.log(model.getField('target')); // 'HELLO'
 ```
 
 ## 示例

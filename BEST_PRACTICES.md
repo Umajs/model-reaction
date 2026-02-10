@@ -65,3 +65,15 @@ errorHandler.onError(ErrorType.ALL, (error) => {
 - Add clear documentation comments for each model
 - Keep model definitions concise, avoiding excessive complexity
 - Regularly refactor and optimize the reaction system
+
+## 6. Type Safety
+
+### Define Interfaces
+- Always define a TypeScript interface for your data model.
+- Use `createModel<Interface>(...)` to enforce schema validation.
+- This prevents runtime errors caused by missing fields or incorrect types.
+
+### Strict Schema Matching
+- The library enforces that your Schema matches your Interface exactly.
+- All required fields in the Interface must be present in the Schema.
+- Extra fields not in the Interface are not allowed in the Schema.

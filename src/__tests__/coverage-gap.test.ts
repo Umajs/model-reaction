@@ -15,7 +15,11 @@ describe('Coverage Gap Tests', () => {
     // Test debounced reactions
     test('should handle debounced reactions', async () => {
         jest.useFakeTimers();
-        const schema: Model = {
+        interface Schema {
+            input: string;
+            output: string;
+        }
+        const schema: Model<Schema> = {
             input: { type: 'string', default: '' },
             output: {
                 type: 'string',
@@ -27,7 +31,7 @@ describe('Coverage Gap Tests', () => {
             }
         };
 
-        const model = createModel(schema, { debounceReactions: 100 });
+        const model = createModel<Schema>(schema, { debounceReactions: 100 });
         
         // Trigger reaction multiple times rapidly
         await model.setField('input', 'a');
@@ -51,7 +55,11 @@ describe('Coverage Gap Tests', () => {
     // Test reaction with action
     test('should execute reaction action', async () => {
         const actionSpy = jest.fn();
-        const schema: Model = {
+        interface Schema {
+            source: string;
+            target: string;
+        }
+        const schema: Model<Schema> = {
             source: { type: 'string', default: 'start' },
             target: {
                 type: 'string',
@@ -64,7 +72,7 @@ describe('Coverage Gap Tests', () => {
             }
         };
 
-        const model = createModel(schema);
+        const model = createModel<Schema>(schema);
         await model.setField('source', 'end');
         await new Promise(resolve => setTimeout(resolve, 0));
 
@@ -76,14 +84,17 @@ describe('Coverage Gap Tests', () => {
 
     // Test error formatter
     test('should use custom error formatter', async () => {
-        const schema: Model = {
+        interface Schema {
+            field: string;
+        }
+        const schema: Model<Schema> = {
             field: {
                 type: 'string',
                 validator: [ValidationRules.required]
             }
         };
 
-        const model = createModel(schema, {
+        const model = createModel<Schema>(schema, {
             errorFormatter: (err) => `[${err.field}] ${err.message}`
         });
 
@@ -95,7 +106,10 @@ describe('Coverage Gap Tests', () => {
     test('should update data when validateAll passes on dirty data', async () => {
         // Create a rule that fails first then passes
         let shouldPass = false;
-        const schema: Model = {
+        interface Schema {
+            field: string;
+        }
+        const schema: Model<Schema> = {
             field: {
                 type: 'string',
                 validator: [{
@@ -107,7 +121,7 @@ describe('Coverage Gap Tests', () => {
             }
         };
 
-        const model = createModel(schema);
+        const model = createModel<Schema>(schema);
         
         // First fail
         await model.setField('field', 'invalid');
@@ -147,10 +161,13 @@ describe('Coverage Gap Tests', () => {
 
     // ModelManager off
     test('should handle off in ModelManager', () => {
-        const schema: Model = {
+        interface Schema {
+            field: string;
+        }
+        const schema: Model<Schema> = {
             field: { type: 'string' }
         };
-        const model = createModel(schema);
+        const model = createModel<Schema>(schema);
         const cb = jest.fn();
 
         model.on('field:change', cb);
@@ -166,13 +183,16 @@ describe('Coverage Gap Tests', () => {
 
     // ModelManager transform
     test('should transform value before setting', async () => {
-        const schema: Model = {
+        interface Schema {
+            field: string;
+        }
+        const schema: Model<Schema> = {
             field: { 
                 type: 'string',
                 transform: (val) => val.trim()
             }
         };
-        const model = createModel(schema);
+        const model = createModel<Schema>(schema);
         
         await model.setField('field', '  value  ');
         expect(model.getField('field')).toBe('value');
@@ -211,8 +231,11 @@ describe('ModelManager Direct Tests', () => {
 
     // Test ModelReturn.data getter
     test('should expose data via getter', () => {
-        const schema: Model = { field: { type: 'string', default: 'val' } };
-        const model = createModel(schema);
+        interface Schema {
+            field: string;
+        }
+        const schema: Model<Schema> = { field: { type: 'string', default: 'val' } };
+        const model = createModel<Schema>(schema);
         expect(model.data).toEqual({ field: 'val' });
     });
 });

@@ -46,7 +46,10 @@ describe('ErrorHandler', () => {
 
     // Test error handling in ModelManager
     test('should handle errors in ModelManager', async () => {
-        const testSchema: Model = {
+        interface User {
+            name: string;
+        }
+        const testSchema: Model<User> = {
             name: {
                 type: 'string',
                 validator: [],
@@ -54,13 +57,14 @@ describe('ErrorHandler', () => {
             },
         };
 
-        const modelManager = createModel(testSchema);
+        const modelManager = createModel<User>(testSchema);
         const errorCallback = jest.fn();
 
         // Listen for field not found error
         modelManager.on('field:not-found', errorCallback);
 
         // Try to set non-existent field
+        // @ts-expect-error - Testing runtime error for non-existent field
         await modelManager.setField('nonexistentField', 'value');
 
         // Validate error was triggered

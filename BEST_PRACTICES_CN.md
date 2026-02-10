@@ -65,3 +65,15 @@ errorHandler.onError(ErrorType.ALL, (error) => {
 - 为每个模型添加清晰的文档注释
 - 保持模型定义简洁，避免过度复杂
 - 定期重构和优化反应系统
+
+## 6. 类型安全
+
+### 定义接口
+- 始终为您的数据模型定义 TypeScript 接口。
+- 使用 `createModel<Interface>(...)` 来强制进行 Schema 验证。
+- 这可以防止因缺少字段或类型错误而导致的运行时错误。
+
+### 严格的 Schema 匹配
+- 库强制要求您的 Schema 与您的 Interface 完全匹配。
+- Interface 中的所有必填字段都必须存在于 Schema 中。
+- 不允许在 Schema 中出现 Interface 中未定义的额外字段。

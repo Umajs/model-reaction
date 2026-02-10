@@ -1,7 +1,13 @@
-import { createModel, ValidationRules } from '../src/index';
+import { createModel, ValidationRules, Model } from '../src/index';
+
+interface User {
+  name: string;
+  age: number;
+  email: string;
+}
 
 // 定义模型架构
-const userModel = createModel({
+const userModel = createModel<User>({
   name: {
     type: 'string',
     validator: [ValidationRules.required],

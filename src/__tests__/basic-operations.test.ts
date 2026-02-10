@@ -1,7 +1,12 @@
 import { createModel, ModelReturn, Model, ValidationRules, ErrorType } from '../index';
 
+interface User {
+    name: string;
+    age: number;
+}
+
 describe('ModelManager - Basic Operations', () => {
-    const testSchema: Model = {
+    const testSchema: Model<User> = {
         name: {
             type: 'string',
             validator: [ValidationRules.required],
@@ -14,10 +19,10 @@ describe('ModelManager - Basic Operations', () => {
         },
     };
 
-    let modelManager: ModelReturn;
+    let modelManager: ModelReturn<User>;
 
     beforeEach(() => {
-        modelManager = createModel(testSchema, { asyncValidationTimeout: 5000 });
+        modelManager = createModel<User>(testSchema, { asyncValidationTimeout: 5000 });
         jest.spyOn(console, 'error').mockImplementation(() => {});
     });
 
@@ -43,6 +48,7 @@ describe('ModelManager - Basic Operations', () => {
         const errorCallback = jest.fn();
         modelManager.on('field:not-found', errorCallback);
 
+        // @ts-expect-error - Testing runtime error for non-existent field
         const result = await modelManager.setField('nonexistentField', 'value');
 
         // Validate return value
@@ -53,6 +59,7 @@ describe('ModelManager - Basic Operations', () => {
         expect(errorCallback.mock.calls[0][0].type).toBe(ErrorType.FIELD_NOT_FOUND);
         expect(errorCallback.mock.calls[0][0].field).toBe('nonexistentField');
         // Validate data was not modified
+        // @ts-expect-error - Testing runtime error for non-existent field
         expect(modelManager.getField('nonexistentField')).toBeUndefined();
     });
 });

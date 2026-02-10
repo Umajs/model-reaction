@@ -1,7 +1,13 @@
 import { createModel, Model, ModelReturn, ValidationRules } from '../index';
 
+interface User {
+    name: string;
+    age: number;
+    email: string;
+}
+
 describe('ModelManager - Dirty Data Management', () => {
-    const testSchema: Model = {
+    const testSchema: Model<User> = {
         name: {
             type: 'string',
             validator: [ValidationRules.required],
@@ -19,10 +25,10 @@ describe('ModelManager - Dirty Data Management', () => {
         },
     };
 
-    let modelManager: ModelReturn;
+    let modelManager: ModelReturn<User>;
 
     beforeEach(() => {
-        modelManager = createModel(testSchema, { asyncValidationTimeout: 5000 });
+        modelManager = createModel<User>(testSchema, { asyncValidationTimeout: 5000 });
         jest.spyOn(console, 'error').mockImplementation(() => {});
     });
 
@@ -36,6 +42,7 @@ describe('ModelManager - Dirty Data Management', () => {
         expect(modelManager.getDirtyData()).toEqual({});
 
         // After setting invalid value, verify dirtyData contains the field
+        // @ts-expect-error - Testing runtime type check
         await modelManager.setField('age', 'invalid-age');
         expect(modelManager.getDirtyData()).toHaveProperty('age');
         expect(modelManager.getDirtyData().age).toBe('invalid-age');

@@ -1,7 +1,13 @@
 import { createModel, ModelReturn, Model, ValidationRules } from '../index';
 
+interface User {
+    name: string;
+    age: number;
+    email: string;
+}
+
 describe('ModelManager - Batch Operations', () => {
-    const testSchema: Model = {
+    const testSchema: Model<User> = {
         name: {
             type: 'string',
             validator: [ValidationRules.required],
@@ -19,10 +25,10 @@ describe('ModelManager - Batch Operations', () => {
         },
     };
 
-    let modelManager: ModelReturn;
+    let modelManager: ModelReturn<User>;
 
     beforeEach(() => {
-        modelManager = createModel(testSchema, { asyncValidationTimeout: 5000 });
+        modelManager = createModel<User>(testSchema, { asyncValidationTimeout: 5000 });
         jest.spyOn(console, 'error').mockImplementation(() => {});
     });
 
