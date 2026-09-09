@@ -262,6 +262,7 @@ function EditUserRoute({ userId }: { userId: string }) {
 | 渲染期闭包变量 | 必须加进 `useCallback` 依赖（否则读到旧值） | 始终是最新一次渲染的闭包 |
 | 等值比较位置 | 在模型订阅里——模型层可在到达 React 前去重 | 在 `getSnapshot` 里——模型层全量推送，hook 自己缓存/去重 |
 | selector 调用频次 | 每次 **commit** 跑一次 | 每次 **render** 跑一次（`getSnapshot` 在每次渲染都会调用） |
+| selector **每次调用返回新引用**（默认 `Object.is`） | 安全——快照仅在模型事件时更新，两次 commit 之间 `getSnapshot` 返回稳定引用 | ⚠️ **无限重渲染**。`getSnapshot` 每次渲染都算出新引用，`Object.is` 永远判不等 → React 抛出 *"Maximum update depth exceeded"*。**必须**传入结构化 `isEqual`（如导出的 `shallow`） |
 | 适用场景 | 派生体固定、稳定路径上的派生值 | selector 依赖渲染期变量（`id`、`index`、分页游标…），或追求少写 `useCallback` 的短生命周期组件 |
 
 ```tsx
@@ -276,6 +277,31 @@ function Row({ id }: { id: string }) {
 }
 ```
 
+> ⚠️ **`useModelComputed` 需要稳定的快照。** 如果它的 selector 每次调用都返回
+> 新的对象/数组（`(d) => d.items.map(...)`、`(d) => ({...})`），你**必须**传入
+> `isEqual`——常用导出的 `shallow`。否则每次渲染都产生新引用，渲染期缓存永远命
+> 中不了，React 会以 *"Maximum update depth exceeded"* 卸载组件。selector 返回基
+> 元值或本就稳定的引用则不受影响。`useModelSelector` **没有**这个陷阱，因为它的
+> 快照只在模型发出 `field:change` 时才变化。
+
+<details>
+<summary><strong>为什么 <code>isEqual</code> 不默认成 <code>shallow</code>？</strong></summary>
+
+把 `shallow` 设为默认只能盖住一部分陷阱，因此刻意不这么做：
+
+- **只能救扁平 selector。** `shallow` 只比一层，所以
+  `(d) => ({ rows: d.items.map(...) })` 里嵌套的 `rows` 每次仍是新引用，照样
+  死循环。默认 `shallow` 会把「必崩」变成「偶发崩」，比显式要求更难排查。
+- **破坏对称性。** `useModelSelector`、`useModelComputed`、`model.subscribe`、
+  `subscribeField` 全部默认 `Object.is`。只改一个 hook 的默认值会造成「同签名、
+  不同默认」，更难记而非更好记。
+- **偏离生态惯例。** react-redux 的 `useSelector` 与 zustand 的 selector 都默认
+  引用相等；浅比较一律显式 opt-in（如 zustand 的 `useShallow`）。
+
+因此选择保持 `Object.is`，并让错误**可见**（本警告 + hook 的 JSDoc），而不是用
+一个不完整的默认值把它藏起来。
+</details>
+
 经验法则：默认用 `useModelSelector`；只要 selector 闭包了渲染期会变的变量，就改用 `useModelComputed`。
 
 ## 选择决策树
@@ -285,6 +311,8 @@ function Row({ id }: { id: string }) {
    （如 `id`、`index`、分页游标、搜索关键字）？
    ├── 是 → useModelComputed
    │        （正确性：无需 useCallback 即可避免闭包陈旧）
+   │        ⚠ 若它同时返回新的对象/数组，必须传 `isEqual`
+   │           （如 `shallow`），否则会因 "Maximum update depth" 死循环
    └── 否 → 继续 ↓
 
 2. selector 体计算是否昂贵

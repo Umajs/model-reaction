@@ -137,6 +137,13 @@ export function useModelSelector<T extends Record<string, any>, R>(
  *   - Ref writes happen during render. This is the same pattern used by
  *     zustand and is concurrent-safe, but keep selectors pure.
  *
+ * ⚠️ If the selector returns a **fresh object/array each call**
+ * (`(d) => d.items.map(...)`, `(d) => ({...})`), you MUST pass an `isEqual`
+ * (e.g. `shallow`). With the default `Object.is`, every render yields a new
+ * reference, the per-render cache never hits, and React aborts with
+ * "Maximum update depth exceeded". Selectors returning a primitive or a
+ * stable reference are fine.
+ *
  * ```tsx
  * function Row({ id }: { id: string }) {
  *     // No useCallback needed; closure variable `id` always reflects the

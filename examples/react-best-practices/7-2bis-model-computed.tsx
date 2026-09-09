@@ -10,12 +10,17 @@
  *
  * Trade-off: the selector runs on every render (inside `getSnapshot`),
  * so keep it cheap.
+ *
+ * ⚠️ If the selector returns a *fresh* object/array each call, pair it with
+ * a structural `isEqual` such as `shallow` (see example 3). Without it the
+ * default `Object.is` never matches, the per-render cache never hits, and
+ * React aborts with "Maximum update depth exceeded".
  */
 import * as React from 'react';
 void React;
 
 import { createModel } from '../../src/index';
-import { useModelComputed } from '../../src/react';
+import { shallow, useModelComputed } from '../../src/react';
 
 interface Cart {
     items: Record<string, { name: string; price: number }>;
@@ -40,4 +45,19 @@ export function Total() {
 export function Row({ id }: { id: string }) {
     const item = useModelComputed(cart, (d) => d.items[id]);
     return <span>{item?.name ?? '—'}</span>;
+}
+
+// 3. Selector that builds a *fresh* object each call. MUST pass `shallow`
+//    (or another structural `isEqual`) — otherwise the default `Object.is`
+//    sees a new reference every render and loops on "Maximum update depth".
+export function Summary() {
+    const { total, count } = useModelComputed(
+        cart,
+        (d) => ({
+            total: d.qty * d.price,
+            count: Object.keys(d.items).length,
+        }),
+        shallow,
+    );
+    return <span>{count} items · Total: {total}</span>;
 }

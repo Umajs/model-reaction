@@ -273,6 +273,7 @@ the `selector` reference very differently:
 | Per-render closure variables | Need to be added to `useCallback` deps (otherwise stale). | Always reflect the latest render automatically. |
 | Equality check site | Inside the model subscription — model can dedupe before reaching React. | Inside `getSnapshot` — model fans out every change, hook caches/dedupes per render. |
 | Selector cost | Runs once per **commit**. | Runs once per **render** (because `getSnapshot` is called on every render). |
+| Selector returning a **new reference each call** (default `Object.is`) | Safe — the snapshot only updates on model events, so `getSnapshot` returns a stable reference between commits. | ⚠️ **Infinite re-render.** `getSnapshot` recomputes a fresh reference every render and `Object.is` never matches → React aborts with *"Maximum update depth exceeded"*. You **must** pass a structural `isEqual` (e.g. the exported `shallow`). |
 | Best for | Stable, hot-path derived values where the selector body is fixed. | Selectors that depend on per-render variables (`id`, `index`, paging cursor, …) or short-lived components where ceremony matters more than per-render selector cost. |
 
 ```tsx
@@ -287,6 +288,38 @@ function Row({ id }: { id: string }) {
 }
 ```
 
+> ⚠️ **`useModelComputed` needs a stable snapshot.** If its selector returns a
+> fresh object/array on every call (`(d) => d.items.map(...)`, `(d) => ({...})`),
+> you **must** supply an `isEqual` — the exported `shallow` helper is the
+> usual choice. Without it, each render produces a new reference, the per-render
+> cache never hits, and React tears the component down with *"Maximum update
+> depth exceeded"*. Selectors returning a primitive or an already-stable
+> reference are unaffected. `useModelSelector` does **not** have this pitfall,
+> because its snapshot only changes when the model emits a `field:change`.
+
+<details>
+<summary><strong>Why isn't <code>isEqual</code> defaulted to <code>shallow</code>?</strong></summary>
+
+Making `shallow` the default would only paper over part of the trap and is
+deliberately avoided:
+
+- **It fixes only flat selectors.** `shallow` compares one level deep, so
+  `(d) => ({ rows: d.items.map(...) })` still returns a fresh nested `rows`
+  reference each render and would keep looping. A default `shallow` turns a
+  reliable crash into an intermittent one — harder to diagnose than the
+  explicit requirement.
+- **It breaks symmetry.** `useModelSelector`, `useModelComputed`,
+  `model.subscribe`, and `subscribeField` all default to `Object.is`. Changing
+  one hook's default makes "same signature, different default" — less
+  predictable, not more.
+- **It diverges from the ecosystem.** react-redux `useSelector` and zustand
+  selectors default to reference equality; shallow comparison is always
+  opt-in (e.g. zustand's `useShallow`).
+
+The chosen trade-off is to keep `Object.is` and make the failure **visible**
+(this warning + the hook's JSDoc) rather than hide it behind a partial default.
+</details>
+
 Rule of thumb: prefer `useModelSelector` for "global" derivations, switch
 to `useModelComputed` whenever the selector closes over a value that
 changes between renders.
@@ -298,6 +331,8 @@ changes between renders.
    (e.g. `id`, `index`, paging cursor, search keyword)?
    ├── Yes → useModelComputed
    │         (correctness: avoids stale closures without useCallback)
+   │         ⚠ if it also returns a fresh object/array, pass `isEqual`
+   │            (e.g. `shallow`) or it will loop on "Maximum update depth"
    └── No  → continue ↓
 
 2. Is the selector body expensive

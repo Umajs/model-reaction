@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Docs
+- Documented that `useModelComputed` requires a structural `isEqual` (e.g.
+  `shallow`) when its selector returns a fresh object/array each call;
+  otherwise the default `Object.is` never matches and React aborts with
+  "Maximum update depth exceeded". Clarified in `docs/REACT.md`,
+  `docs/REACT_CN.md`, and the hook's JSDoc.
+
 ## [1.2.0] - 2026-09-04
 
 ### Added

@@ -442,7 +442,7 @@ function TitleField() {
 | 表单输入、错误、dirty、validating | `useModelFieldState(model, field)` |
 | 多字段切片 | `useModelFields(model, fields)` |
 | 派生展示值 | `useModelSelector(model, selector)` |
-| 内联 selector 且依赖组件 props | `useModelComputed(model, selector)` |
+| 内联 selector 且依赖组件 props | `useModelComputed(model, selector)`（selector 若返回新对象/数组，须传 `isEqual`，如 `shallow`；详见 [REACT_CN.md](./REACT_CN.md#usemodelselector-vs-usemodelcomputed)） |
 
 ### 5.2 提交流程
 
